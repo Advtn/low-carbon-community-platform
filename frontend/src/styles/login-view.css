@@ -1,0 +1,17 @@
+.login-title {
+  font-size: 26px;
+  margin: 0;
+}
+
+.login-field {
+  margin-top: 16px;
+}
+
+.login-field.compact {
+  margin-top: 10px;
+}
+
+.login-btn {
+  width: 100%;
+  margin-top: 12px;
+}
