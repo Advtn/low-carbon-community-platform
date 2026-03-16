@@ -30,6 +30,14 @@
             <div class="value">{{ reports.length }}</div>
           </div>
         </div>
+        <div class="behavior-chart-panel">
+          <div class="behavior-chart-header">
+            <span>行为占比（按次数）</span>
+            <span class="small-tip">总次数：{{ behaviorTotalCount }}</span>
+          </div>
+          <div v-if="!hasBehaviorRatioData" class="small-tip">暂无行为数据，提交并审核通过后可查看占比。</div>
+          <div ref="behaviorChartRef" class="behavior-chart"></div>
+        </div>
       </section>
 
       <section class="card panel report-panel" style="grid-column: span 5">
@@ -95,6 +103,30 @@
           </div>
 
           <input v-model.trim="assistForm.location" class="input" placeholder="地点（可选，如：XX社区东门）" />
+
+          <div v-if="isRoutePlannerVisible" class="route-planner">
+            <div class="route-header">
+              <div class="route-title">步行/骑行路线选择</div>
+              <div class="route-header-actions">
+                <button class="btn secondary" type="button" @click="locateCurrentPosition" :disabled="locatingCurrent">
+                  {{ locatingCurrent ? '定位中...' : '定位到当前位置' }}
+                </button>
+                <button class="btn secondary" type="button" @click="resetRoutePlanner">重选路线</button>
+              </div>
+            </div>
+            <div class="small-tip">在地图上先点击起点，再点击终点。系统会自动计算路线里程并回填到里程输入框。</div>
+            <div ref="mapContainerRef" class="route-map"></div>
+            <div class="route-meta">
+              <span>起点：{{ routeStartText }}</span>
+              <span>终点：{{ routeEndText }}</span>
+              <span>路线里程：{{ routeDistanceKm || '-' }} km</span>
+            </div>
+            <div v-if="routeLoading" class="small-tip">路线计算中...</div>
+            <div v-if="routeError" class="small-tip route-error">{{ routeError }}</div>
+          </div>
+          <div v-else class="small-tip">
+            当前出行方式不需要地图选线，仅步行/骑行支持路线选择。
+          </div>
         </template>
         <div v-else-if="selectedRule" class="small-tip">
           当前规则无需填写出行方式、里程和地点。
@@ -287,7 +319,15 @@
 </template>
 
 <script setup>
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { use, init } from 'echarts/core'
+import { PieChart } from 'echarts/charts'
+import { TitleComponent, TooltipComponent, LegendComponent } from 'echarts/components'
+import { LabelLayout, UniversalTransition } from 'echarts/features'
+import { CanvasRenderer } from 'echarts/renderers'
 import { useResidentPage } from '../composables/useResidentPage'
+
+use([PieChart, TitleComponent, TooltipComponent, LegendComponent, LabelLayout, UniversalTransition, CanvasRenderer])
 
 const {
   user,
@@ -302,6 +342,13 @@ const {
   imageInputRef,
   uploadingImage,
   proofImagePreviewUrl,
+  mapContainerRef,
+  routeLoading,
+  routeError,
+  locatingCurrent,
+  routeDistanceKm,
+  routeStartText,
+  routeEndText,
   quickQuantities,
   transportModes,
   proofTemplates,
@@ -309,6 +356,7 @@ const {
   assistForm,
   selectedRule,
   isCommuteRule,
+  isRoutePlannerVisible,
   todayUsedCount,
   remainingQuota,
   estimatedPoints,
@@ -322,6 +370,8 @@ const {
   changeQuantity,
   useTemplate,
   resetReportForm,
+  resetRoutePlanner,
+  locateCurrentPosition,
   redeem,
   resolveImageUrl,
   openImage,
@@ -330,6 +380,123 @@ const {
   fmt,
   logout
 } = useResidentPage()
+
+const behaviorChartRef = ref(null)
+let behaviorChart = null
+
+const behaviorRatioData = computed(() => {
+  const approvedRows = reports.value.filter((row) => row.status === 'APPROVED')
+  const sourceRows = approvedRows.length ? approvedRows : reports.value
+  const counter = new Map()
+
+  sourceRows.forEach((row) => {
+    const ruleName = row.ruleName || '其他行为'
+    const quantity = Number(row.quantity || 0)
+    counter.set(ruleName, (counter.get(ruleName) || 0) + quantity)
+  })
+
+  return Array.from(counter.entries())
+    .map(([name, value]) => ({ name, value }))
+    .filter((item) => item.value > 0)
+    .sort((a, b) => b.value - a.value)
+})
+
+const hasBehaviorRatioData = computed(() => behaviorRatioData.value.length > 0)
+const behaviorTotalCount = computed(() =>
+  behaviorRatioData.value.reduce((sum, item) => sum + Number(item.value || 0), 0)
+)
+
+function buildBehaviorChartOption() {
+  return {
+    color: ['#0f9d76', '#38b38b', '#5ec7a2', '#7fd8b8', '#9ae2ca', '#b5ecd9', '#d2f5e9'],
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}<br/>次数: {c}（{d}%）'
+    },
+    legend: {
+      bottom: 0,
+      type: 'scroll',
+      icon: 'circle'
+    },
+    series: [
+      {
+        name: '行为占比',
+        type: 'pie',
+        radius: ['36%', '68%'],
+        center: ['50%', '42%'],
+        avoidLabelOverlap: true,
+        itemStyle: {
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        label: {
+          show: true,
+          formatter: '{d}%'
+        },
+        labelLine: {
+          show: true
+        },
+        data: behaviorRatioData.value
+      }
+    ]
+  }
+}
+
+function renderBehaviorChart() {
+  if (!behaviorChartRef.value) return
+  if (!behaviorChart) {
+    behaviorChart = init(behaviorChartRef.value)
+  }
+
+  if (!hasBehaviorRatioData.value) {
+    behaviorChart.clear()
+    behaviorChart.setOption({
+      title: {
+        text: '暂无占比数据',
+        left: 'center',
+        top: 'middle',
+        textStyle: {
+          color: '#8b9a9f',
+          fontSize: 14,
+          fontWeight: 400
+        }
+      }
+    })
+    return
+  }
+
+  behaviorChart.setOption(buildBehaviorChartOption(), true)
+}
+
+function resizeBehaviorChart() {
+  if (behaviorChart) {
+    behaviorChart.resize()
+  }
+}
+
+watch(
+  behaviorRatioData,
+  async () => {
+    await nextTick()
+    renderBehaviorChart()
+    resizeBehaviorChart()
+  },
+  { deep: true }
+)
+
+onMounted(async () => {
+  await nextTick()
+  renderBehaviorChart()
+  window.addEventListener('resize', resizeBehaviorChart)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', resizeBehaviorChart)
+  if (behaviorChart) {
+    behaviorChart.dispose()
+    behaviorChart = null
+  }
+})
 </script>
 
 <style scoped src="../styles/resident-view.css"></style>

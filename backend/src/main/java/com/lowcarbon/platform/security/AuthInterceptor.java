@@ -24,6 +24,7 @@ public class AuthInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String path = request.getRequestURI();
         if (path.startsWith("/api/auth/login")
+                || path.startsWith("/api/auth/register")
                 || path.startsWith("/h2-console")
                 || "OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;

@@ -11,6 +11,29 @@
   margin-top: 10px;
 }
 
+.auth-tabs {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tab-btn {
+  border: 0;
+  background: #f2f6f6;
+  color: #425257;
+  cursor: pointer;
+  padding: 10px 8px;
+  font-size: 14px;
+}
+
+.tab-btn.active {
+  background: #0f9d76;
+  color: #fff;
+}
+
 .login-btn {
   width: 100%;
   margin-top: 12px;

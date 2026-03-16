@@ -2,6 +2,7 @@ package com.lowcarbon.platform.controller;
 
 import com.lowcarbon.platform.dto.LoginRequest;
 import com.lowcarbon.platform.dto.LoginResponse;
+import com.lowcarbon.platform.dto.RegisterRequest;
 import com.lowcarbon.platform.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,5 +23,10 @@ public class AuthController {
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/register")
+    public LoginResponse register(@Valid @RequestBody RegisterRequest request) {
+        return authService.register(request);
     }
 }

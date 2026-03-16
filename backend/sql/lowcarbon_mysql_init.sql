@@ -1,4 +1,4 @@
-﻿-- 社区低碳平台 MySQL 初始化脚本（简历版）
+﻿-- 社区低碳平台 MySQL 初始化脚本
 -- 建议版本：MySQL 8.x
 
 CREATE DATABASE IF NOT EXISTS lowcarbon

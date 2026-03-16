@@ -129,3 +129,75 @@
   border: 1px solid var(--line);
   cursor: pointer;
 }
+
+.route-planner {
+  margin-top: 6px;
+  border: 1px dashed #b9d4d4;
+  border-radius: 10px;
+  padding: 10px;
+  background: #f9fdfd;
+}
+
+.route-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.route-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.route-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.route-map {
+  margin-top: 8px;
+  width: 100%;
+  height: 280px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.route-meta {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  font-size: 12px;
+  color: #3b4c52;
+}
+
+.route-error {
+  color: #a12828;
+}
+
+.behavior-chart-panel {
+  margin-top: 12px;
+  border: 1px dashed #bfd7d7;
+  border-radius: 10px;
+  padding: 10px;
+  background: #f9fcfc;
+}
+
+.behavior-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.behavior-chart {
+  margin-top: 6px;
+  width: 100%;
+  height: 260px;
+}
