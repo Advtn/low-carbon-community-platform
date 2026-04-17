@@ -7,3 +7,7 @@ export function loginByPassword(payload) {
 export function registerAccount(payload) {
   return client.post('/auth/register', payload)
 }
+
+export function logoutAccount() {
+  return client.post('/auth/logout')
+}

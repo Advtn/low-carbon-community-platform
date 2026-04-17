@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 
 public record UserUpsertRequest(
         @NotBlank String username,
-        @NotBlank String password,
+        String password,
         @NotBlank String nickname,
         @NotNull UserRole role) {
 }

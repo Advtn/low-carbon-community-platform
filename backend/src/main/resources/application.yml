@@ -17,6 +17,9 @@ mybatis-plus:
 
 app:
   upload-dir: ${UPLOAD_DIR:${user.home}/.lowcarbon/uploads}
+  auth:
+    jwt-secret: ${APP_JWT_SECRET:lowcarbon-dev-secret-change-me-please-2026}
+    jwt-ttl-seconds: ${APP_JWT_TTL_SECONDS:86400}
 
 server:
   port: ${SERVER_PORT:8080}

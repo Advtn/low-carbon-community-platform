@@ -10,7 +10,7 @@ USE lowcarbon;
 CREATE TABLE IF NOT EXISTS users (
   id BIGINT NOT NULL AUTO_INCREMENT,
   username VARCHAR(50) NOT NULL,
-  password VARCHAR(100) NOT NULL,
+  password VARCHAR(255) NOT NULL,
   nickname VARCHAR(50) NOT NULL,
   role VARCHAR(20) NOT NULL DEFAULT 'RESIDENT',
   total_points INT NOT NULL DEFAULT 0,
@@ -95,19 +95,19 @@ CREATE TABLE IF NOT EXISTS redemption_orders (
   CONSTRAINT fk_redemption_orders_item FOREIGN KEY (item_id) REFERENCES mall_items (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE INDEX IF NOT EXISTS idx_users_role_points
+CREATE INDEX idx_users_role_points
   ON users (role, total_points, total_carbon_reduction);
-CREATE INDEX IF NOT EXISTS idx_behavior_reports_user_rule_time
+CREATE INDEX idx_behavior_reports_user_rule_time
   ON behavior_reports (user_id, rule_id, submitted_at);
-CREATE INDEX IF NOT EXISTS idx_behavior_reports_status_submitted_at
+CREATE INDEX idx_behavior_reports_status_submitted_at
   ON behavior_reports (status, submitted_at);
-CREATE INDEX IF NOT EXISTS idx_behavior_reports_status_audited_at
+CREATE INDEX idx_behavior_reports_status_audited_at
   ON behavior_reports (status, audited_at);
-CREATE INDEX IF NOT EXISTS idx_points_ledgers_user_created_at
+CREATE INDEX idx_points_ledgers_user_created_at
   ON points_ledgers (user_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_redemption_orders_status_created_at
+CREATE INDEX idx_redemption_orders_status_created_at
   ON redemption_orders (status, created_at);
-CREATE INDEX IF NOT EXISTS idx_redemption_orders_status_completed_at
+CREATE INDEX idx_redemption_orders_status_completed_at
   ON redemption_orders (status, completed_at);
 
 -- 初始化演示账号

@@ -10,6 +10,7 @@ import {
   deleteRuleById,
   deleteUserById,
   fetchAdminData,
+  logoutAccount,
   updateItem,
   updateOrderStatus,
   updateRule,
@@ -109,7 +110,7 @@ export function useAdminPage() {
     Object.assign(userForm, {
       id: u.id,
       username: u.username,
-      password: '123456',
+      password: '',
       nickname: u.nickname,
       role: u.role
     })
@@ -271,10 +272,16 @@ export function useAdminPage() {
     window.open(url, '_blank')
   }
 
-  function logout() {
-    sessionStorage.removeItem('token')
-    sessionStorage.removeItem('user')
-    router.push('/login')
+  async function logout() {
+    try {
+      await logoutAccount()
+    } catch (e) {
+      // Ignore logout request failures and clear local session anyway.
+    } finally {
+      sessionStorage.removeItem('token')
+      sessionStorage.removeItem('user')
+      router.push('/login')
+    }
   }
 
   return {

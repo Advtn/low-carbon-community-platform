@@ -9,6 +9,7 @@ import {
   apiOrigin,
   createReport,
   fetchResidentData,
+  logoutAccount,
   redeemItem,
   uploadImage
 } from '../services/residentService'
@@ -400,9 +401,15 @@ export function useResidentPage() {
   }
 
   function logout() {
-    sessionStorage.removeItem('token')
-    sessionStorage.removeItem('user')
-    router.push('/login')
+    logoutAccount()
+      .catch(() => {
+        // Ignore logout request failures and clear local session anyway.
+      })
+      .finally(() => {
+        sessionStorage.removeItem('token')
+        sessionStorage.removeItem('user')
+        router.push('/login')
+      })
   }
 
   function initMap() {

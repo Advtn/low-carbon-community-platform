@@ -65,3 +65,7 @@ export function deleteItemById(id) {
 export function updateOrderStatus(id, payload) {
   return client.post(`/admin/orders/${id}/status`, payload)
 }
+
+export function logoutAccount() {
+  return client.post('/auth/logout')
+}

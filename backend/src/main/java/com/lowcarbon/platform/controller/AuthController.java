@@ -4,6 +4,7 @@ import com.lowcarbon.platform.dto.LoginRequest;
 import com.lowcarbon.platform.dto.LoginResponse;
 import com.lowcarbon.platform.dto.RegisterRequest;
 import com.lowcarbon.platform.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,5 +29,10 @@ public class AuthController {
     @PostMapping("/register")
     public LoginResponse register(@Valid @RequestBody RegisterRequest request) {
         return authService.register(request);
+    }
+
+    @PostMapping("/logout")
+    public void logout(HttpServletRequest request) {
+        authService.logout(request.getHeader("Authorization"));
     }
 }

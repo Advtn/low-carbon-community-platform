@@ -65,7 +65,11 @@
         <div class="form-row">
           <div class="field">
             <label class="field-label">登录密码</label>
-            <input v-model.trim="userForm.password" class="input" placeholder="例如：123456" />
+            <input
+              v-model.trim="userForm.password"
+              class="input"
+              :placeholder="userForm.id ? '留空表示不修改密码' : '例如：123456'"
+            />
           </div>
           <div class="field">
             <label class="field-label">角色</label>

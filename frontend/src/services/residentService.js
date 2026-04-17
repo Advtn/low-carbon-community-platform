@@ -42,3 +42,7 @@ export function uploadImage(file) {
 export function redeemItem(payload) {
   return client.post('/user/mall/redeem', payload)
 }
+
+export function logoutAccount() {
+  return client.post('/auth/logout')
+}

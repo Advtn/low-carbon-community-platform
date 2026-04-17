@@ -10,6 +10,7 @@ import com.lowcarbon.platform.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 
@@ -19,21 +20,23 @@ public class DataInitializer {
     @Bean
     CommandLineRunner seedData(UserRepository userRepository,
                                BehaviorRuleRepository ruleRepository,
-                               MallItemRepository itemRepository) {
+                               MallItemRepository itemRepository,
+                               PasswordEncoder passwordEncoder) {
         return args -> {
-            seedUsers(userRepository);
+            migrateLegacyPasswords(userRepository, passwordEncoder);
+            seedUsers(userRepository, passwordEncoder);
             seedRules(ruleRepository);
             seedItems(itemRepository);
         };
     }
 
-    private void seedUsers(UserRepository userRepository) {
+    private void seedUsers(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         LocalDateTime now = LocalDateTime.now();
-        upsertUser(userRepository, "admin", "admin123", "\u793e\u533a\u7ba1\u7406\u5458", UserRole.ADMIN, now.minusDays(120));
-        upsertUser(userRepository, "alice", "123456", "\u5f20\u4e09", UserRole.RESIDENT, now.minusDays(90));
-        upsertUser(userRepository, "bob", "123456", "\u674e\u56db", UserRole.RESIDENT, now.minusDays(88));
-        upsertUser(userRepository, "carol", "123456", "\u738b\u4e94", UserRole.RESIDENT, now.minusDays(85));
-        upsertUser(userRepository, "david", "123456", "\u8d75\u516d", UserRole.RESIDENT, now.minusDays(83));
+        upsertUser(userRepository, passwordEncoder, "admin", "admin123", "\u793e\u533a\u7ba1\u7406\u5458", UserRole.ADMIN, now.minusDays(120));
+        upsertUser(userRepository, passwordEncoder, "alice", "123456", "\u5f20\u4e09", UserRole.RESIDENT, now.minusDays(90));
+        upsertUser(userRepository, passwordEncoder, "bob", "123456", "\u674e\u56db", UserRole.RESIDENT, now.minusDays(88));
+        upsertUser(userRepository, passwordEncoder, "carol", "123456", "\u738b\u4e94", UserRole.RESIDENT, now.minusDays(85));
+        upsertUser(userRepository, passwordEncoder, "david", "123456", "\u8d75\u516d", UserRole.RESIDENT, now.minusDays(83));
     }
 
     private void seedRules(BehaviorRuleRepository ruleRepository) {
@@ -71,7 +74,17 @@ public class DataInitializer {
         upsertItem(itemRepository, 5L, "\u592a\u9633\u80fd\u5c0f\u53f0\u706f", "USB \u5145\u7535\u592a\u9633\u80fd\u53f0\u706f", 220, 40);
     }
 
+    private void migrateLegacyPasswords(UserRepository repository, PasswordEncoder passwordEncoder) {
+        repository.findAll().forEach(user -> {
+            if (!isEncodedPassword(user.getPassword())) {
+                user.setPassword(passwordEncoder.encode(user.getPassword()));
+                repository.save(user);
+            }
+        });
+    }
+
     private void upsertUser(UserRepository repository,
+                            PasswordEncoder passwordEncoder,
                             String username,
                             String password,
                             String nickname,
@@ -82,7 +95,7 @@ public class DataInitializer {
             user.setUsername(username);
             user.setCreatedAt(createdAt);
         }
-        user.setPassword(password);
+        user.setPassword(passwordEncoder.encode(password));
         user.setNickname(nickname);
         user.setRole(role);
         repository.save(user);
@@ -124,5 +137,10 @@ public class DataInitializer {
         item.setStock(stock);
         item.setEnabled(true);
         repository.save(item);
+    }
+
+    private boolean isEncodedPassword(String password) {
+        return password != null
+                && (password.startsWith("$2a$") || password.startsWith("$2b$") || password.startsWith("$2y$"));
     }
 }

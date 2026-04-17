@@ -23,8 +23,10 @@ import com.lowcarbon.platform.repository.PointsLedgerRepository;
 import com.lowcarbon.platform.repository.RedemptionOrderRepository;
 import com.lowcarbon.platform.repository.UserRepository;
 import com.lowcarbon.platform.service.AdminService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -41,19 +43,22 @@ public class AdminServiceImpl implements AdminService {
     private final PointsLedgerRepository ledgerRepository;
     private final MallItemRepository itemRepository;
     private final RedemptionOrderRepository orderRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public AdminServiceImpl(UserRepository userRepository,
                             BehaviorRuleRepository ruleRepository,
                             BehaviorReportRepository reportRepository,
                             PointsLedgerRepository ledgerRepository,
                             MallItemRepository itemRepository,
-                            RedemptionOrderRepository orderRepository) {
+                            RedemptionOrderRepository orderRepository,
+                            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.ruleRepository = ruleRepository;
         this.reportRepository = reportRepository;
         this.ledgerRepository = ledgerRepository;
         this.itemRepository = itemRepository;
         this.orderRepository = orderRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -95,7 +100,7 @@ public class AdminServiceImpl implements AdminService {
 
         User user = new User();
         user.setUsername(request.username());
-        user.setPassword(request.password());
+        user.setPassword(passwordEncoder.encode(requirePassword(request.password())));
         user.setNickname(request.nickname());
         user.setRole(request.role());
         return toUserMap(userRepository.save(user));
@@ -113,7 +118,9 @@ public class AdminServiceImpl implements AdminService {
         });
 
         user.setUsername(request.username());
-        user.setPassword(request.password());
+        if (StringUtils.hasText(request.password())) {
+            user.setPassword(passwordEncoder.encode(request.password().trim()));
+        }
         user.setNickname(request.nickname());
         user.setRole(request.role());
         return toUserMap(userRepository.save(user));
@@ -315,6 +322,13 @@ public class AdminServiceImpl implements AdminService {
         item.setPointsCost(request.pointsCost());
         item.setStock(request.stock());
         item.setEnabled(request.enabled());
+    }
+
+    private String requirePassword(String password) {
+        if (!StringUtils.hasText(password)) {
+            throw new ApiException("密码不能为空");
+        }
+        return password.trim();
     }
 
     private User getUser(Long userId) {
