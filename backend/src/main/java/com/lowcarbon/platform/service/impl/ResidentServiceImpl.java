@@ -2,6 +2,7 @@ package com.lowcarbon.platform.service.impl;
 
 import com.lowcarbon.platform.dto.BehaviorReportCreateRequest;
 import com.lowcarbon.platform.dto.RedeemRequest;
+import com.lowcarbon.platform.dto.UserProfileUpdateRequest;
 import com.lowcarbon.platform.entity.BehaviorReport;
 import com.lowcarbon.platform.entity.BehaviorRule;
 import com.lowcarbon.platform.entity.MallItem;
@@ -57,10 +58,40 @@ public class ResidentServiceImpl implements ResidentService {
     @Override
     public Map<String, Object> myProfile(Long userId) {
         User user = getUser(userId);
+        return toProfileMap(user);
+    }
+
+    @Override
+    public Map<String, Object> updateProfile(Long userId, UserProfileUpdateRequest request) {
+        User user = getUser(userId);
+        user.setFullName(request.fullName().trim());
+        user.setNickname(request.nickname().trim());
+        user.setGender(trimToNull(request.gender()));
+        user.setEmail(trimToNull(request.email()));
+        user.setPhone(trimToNull(request.phone()));
+        user.setAddress(trimToNull(request.address()));
+        user.setBio(trimToNull(request.bio()));
+        user.setCity(trimToNull(request.city()));
+        user.setOrganization(trimToNull(request.organization()));
+        user.setTags(trimToNull(request.tags()));
+        userRepository.save(user);
+        return toProfileMap(user);
+    }
+
+    private Map<String, Object> toProfileMap(User user) {
         Map<String, Object> data = new HashMap<>();
         data.put("id", user.getId());
         data.put("username", user.getUsername());
         data.put("nickname", user.getNickname());
+        data.put("fullName", user.getFullName());
+        data.put("gender", user.getGender());
+        data.put("email", user.getEmail());
+        data.put("phone", user.getPhone());
+        data.put("address", user.getAddress());
+        data.put("bio", user.getBio());
+        data.put("city", user.getCity());
+        data.put("organization", user.getOrganization());
+        data.put("tags", user.getTags());
         data.put("role", user.getRole());
         data.put("totalPoints", user.getTotalPoints());
         data.put("totalCarbonReduction", user.getTotalCarbonReduction());
@@ -296,5 +327,13 @@ public class ResidentServiceImpl implements ResidentService {
         data.put("completedAt", order.getCompletedAt());
         data.put("remark", order.getRemark());
         return data;
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

@@ -25,6 +25,10 @@ export async function fetchResidentData() {
   }
 }
 
+export function updateResidentProfile(payload) {
+  return client.put('/user/profile', payload)
+}
+
 export function createReport(payload) {
   return client.post('/user/reports', payload)
 }

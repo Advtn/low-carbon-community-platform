@@ -94,10 +94,43 @@ public class DataInitializer {
         if (user.getId() == null) {
             user.setUsername(username);
             user.setCreatedAt(createdAt);
+            user.setPassword(passwordEncoder.encode(password));
+            user.setNickname(nickname);
+            user.setRole(role);
         }
-        user.setPassword(passwordEncoder.encode(password));
-        user.setNickname(nickname);
-        user.setRole(role);
+        if (user.getFullName() == null || user.getFullName().isBlank()) {
+            user.setFullName(nickname);
+        }
+        if (user.getGender() == null || user.getGender().isBlank()) {
+            user.setGender("\u4fdd\u5bc6");
+        }
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            user.setEmail(username + "@lowcarbon.local");
+        }
+        if (user.getPhone() == null || user.getPhone().isBlank()) {
+            user.setPhone(role == UserRole.ADMIN ? "13800009999" : "13800001234");
+        }
+        if (user.getAddress() == null || user.getAddress().isBlank()) {
+            user.setAddress("\u5e7f\u4e1c\u7701\u6df1\u5733\u5e02\u5357\u5c71\u533a\u4f4e\u78b3\u793e\u533a");
+        }
+        if (user.getBio() == null || user.getBio().isBlank()) {
+            user.setBio(role == UserRole.ADMIN
+                    ? "\u8d1f\u8d23\u793e\u533a\u4f4e\u78b3\u79ef\u5206\u5e73\u53f0\u7684\u89c4\u5219\u914d\u7f6e\u4e0e\u8fd0\u8425\u7ba1\u7406\u3002"
+                    : "\u6b63\u5728\u901a\u8fc7\u7eff\u8272\u51fa\u884c\u548c\u65e5\u5e38\u4f4e\u78b3\u4e60\u60ef\u79ef\u7d2f\u793e\u533a\u79ef\u5206\u3002");
+        }
+        if (user.getCity() == null || user.getCity().isBlank()) {
+            user.setCity("\u5e7f\u4e1c\u7701\u6df1\u5733\u5e02");
+        }
+        if (user.getOrganization() == null || user.getOrganization().isBlank()) {
+            user.setOrganization(role == UserRole.ADMIN
+                    ? "\u4f4e\u78b3\u793e\u533a\u8fd0\u8425\u4e2d\u5fc3"
+                    : "\u4f4e\u78b3\u793e\u533a\u5c45\u6c11\u7f51\u7edc");
+        }
+        if (user.getTags() == null || user.getTags().isBlank()) {
+            user.setTags(role == UserRole.ADMIN
+                    ? "\u89c4\u5219\u6cbb\u7406,\u5ba1\u6838\u7ba1\u7406,\u793e\u533a\u8fd0\u8425"
+                    : "\u7eff\u8272\u51fa\u884c,\u793e\u533a\u5206\u7c7b,\u4f4e\u78b3\u751f\u6d3b");
+        }
         repository.save(user);
     }
 

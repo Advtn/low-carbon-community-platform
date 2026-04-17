@@ -2,6 +2,7 @@ package com.lowcarbon.platform.service;
 
 import com.lowcarbon.platform.dto.BehaviorReportCreateRequest;
 import com.lowcarbon.platform.dto.RedeemRequest;
+import com.lowcarbon.platform.dto.UserProfileUpdateRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,8 @@ import java.util.Map;
 public interface ResidentService {
 
     Map<String, Object> myProfile(Long userId);
+
+    Map<String, Object> updateProfile(Long userId, UserProfileUpdateRequest request);
 
     List<Map<String, Object>> listRules();
 

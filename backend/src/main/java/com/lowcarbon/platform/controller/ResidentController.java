@@ -2,6 +2,7 @@ package com.lowcarbon.platform.controller;
 
 import com.lowcarbon.platform.dto.BehaviorReportCreateRequest;
 import com.lowcarbon.platform.dto.RedeemRequest;
+import com.lowcarbon.platform.dto.UserProfileUpdateRequest;
 import com.lowcarbon.platform.entity.User;
 import com.lowcarbon.platform.exception.ApiException;
 import com.lowcarbon.platform.security.AuthContext;
@@ -9,6 +10,7 @@ import com.lowcarbon.platform.service.ResidentService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,6 +31,11 @@ public class ResidentController {
     @GetMapping("/profile")
     public Map<String, Object> profile() {
         return residentService.myProfile(currentUserId());
+    }
+
+    @PutMapping("/profile")
+    public Map<String, Object> updateProfile(@Valid @RequestBody UserProfileUpdateRequest request) {
+        return residentService.updateProfile(currentUserId(), request);
     }
 
     @GetMapping("/rules")

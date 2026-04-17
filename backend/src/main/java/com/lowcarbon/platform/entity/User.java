@@ -24,6 +24,25 @@ public class User {
 
     private String nickname;
 
+    @TableField("full_name")
+    private String fullName;
+
+    private String gender;
+
+    private String email;
+
+    private String phone;
+
+    private String address;
+
+    private String bio;
+
+    private String city;
+
+    private String organization;
+
+    private String tags;
+
     private UserRole role = UserRole.RESIDENT;
 
     @TableField("total_points")
@@ -35,4 +54,3 @@ public class User {
     @TableField("created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 }
-

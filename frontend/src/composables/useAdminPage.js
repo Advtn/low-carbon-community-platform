@@ -22,6 +22,7 @@ export function useAdminPage() {
   const router = useRouter()
 
   const message = ref('')
+  const profile = ref({})
   const dashboard = ref({
     residentCount: 0,
     activeRuleCount: 0,
@@ -81,6 +82,7 @@ export function useAdminPage() {
     message.value = ''
     try {
       const data = await fetchAdminData()
+      profile.value = data.profile || profile.value
       dashboard.value = data.dashboard || dashboard.value
       users.value = data.users
       rules.value = data.rules
@@ -286,6 +288,7 @@ export function useAdminPage() {
 
   return {
     message,
+    profile,
     dashboard,
     users,
     rules,

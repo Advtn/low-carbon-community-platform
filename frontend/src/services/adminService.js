@@ -3,7 +3,8 @@ import client from '../api/client'
 export const apiOrigin = String(client.defaults.baseURL || '').replace(/\/api$/, '')
 
 export async function fetchAdminData() {
-  const [dashboardRes, usersRes, rulesRes, reportsRes, itemsRes, ordersRes] = await Promise.all([
+  const [profileRes, dashboardRes, usersRes, rulesRes, reportsRes, itemsRes, ordersRes] = await Promise.all([
+    client.get('/user/profile'),
     client.get('/admin/dashboard'),
     client.get('/admin/users'),
     client.get('/admin/rules'),
@@ -13,6 +14,7 @@ export async function fetchAdminData() {
   ])
 
   return {
+    profile: profileRes.data,
     dashboard: dashboardRes.data,
     users: usersRes.data,
     rules: rulesRes.data,
@@ -20,6 +22,10 @@ export async function fetchAdminData() {
     items: itemsRes.data,
     orders: ordersRes.data
   }
+}
+
+export function updateAdminProfile(payload) {
+  return client.put('/user/profile', payload)
 }
 
 export function createUser(payload) {
