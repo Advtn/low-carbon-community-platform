@@ -168,6 +168,14 @@
           <div class="small-tip">统计口径：今日“待审核+已通过”上报次数。</div>
         </div>
 
+        <div
+          v-if="reportMessage"
+          class="report-inline-message"
+          :class="reportMessageType === 'success' ? 'success' : 'error'"
+        >
+          {{ reportMessage }}
+        </div>
+
         <div class="report-actions">
           <button class="btn" @click="submitReport">提交上报</button>
           <button class="btn secondary" @click="resetReportForm">重置</button>
@@ -332,6 +340,8 @@ use([PieChart, TitleComponent, TooltipComponent, LegendComponent, LabelLayout, U
 const {
   user,
   message,
+  reportMessage,
+  reportMessageType,
   profile,
   rules,
   reports,

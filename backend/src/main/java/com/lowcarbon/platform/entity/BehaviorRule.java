@@ -1,34 +1,33 @@
 package com.lowcarbon.platform.entity;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-@Entity
-@Table(name = "behavior_rules")
+@TableName("behavior_rules")
 public class BehaviorRule {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 80)
     private String name;
 
-    @Column(length = 300)
     private String description;
 
-    @Column(nullable = false)
+    @TableField("points_per_action")
     private Integer pointsPerAction;
 
-    @Column(nullable = false)
+    @TableField("carbon_reduction_per_action")
     private Double carbonReductionPerAction;
 
-    @Column(nullable = false)
+    @TableField("daily_limit")
     private Integer dailyLimit;
 
-    @Column(nullable = false)
     private Boolean active = true;
 }
+

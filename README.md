@@ -32,7 +32,7 @@
 
 ## 三、技术栈
 
-- 后端：Spring Boot 3.3、Spring Web、Spring Data JPA、Validation、MySQL
+- 后端：Spring Boot 3.3、Spring Web、MyBatis-Plus、Validation、MySQL
 - 前端：Vue3、Vite、Vue Router、Axios
 - 鉴权：Bearer Token（演示场景）
 - 部署：Docker、Docker Compose、Nginx
@@ -46,20 +46,42 @@
 - 新增请求日志过滤器（带 `X-Request-Id`）
 - 配置环境变量化：数据库地址/账号/密码、上传目录、端口
 
-## 五、目录结构
+## 五、持久层架构（MyBatis-Plus）
+
+- 调用链路
+  - `Controller -> Service(接口) -> ServiceImpl -> Repository(接口) -> RepositoryImpl -> Mapper -> MySQL`
+- 分层职责
+  - `entity`：数据库表映射模型，使用 `@TableName/@TableId/@TableField` 显式绑定字段。
+  - `mapper`：基于 `BaseMapper<T>` 提供通用 CRUD，个别场景补充自定义 SQL（如 `for update` 行锁）。
+  - `repository`：定义数据访问接口；`repository.impl` 中实现聚合、排序、状态过滤等查询细节。
+  - `service`：定义业务接口；`service.impl` 中实现事务边界与业务规则（积分变更、库存扣减、审核发放、退款回滚）。
+- 关键设计
+  - 关联关系由对象关联改为 ID 关联（`userId/ruleId/itemId`），避免 ORM 懒加载问题，查询链路更可控。
+  - 高频统计改为数据库聚合（`count/sum`），减少 Java 层遍历。
+  - 兑换与退款流程使用悲观锁读取（`select ... for update`），保障并发下积分与库存一致性。
+  - 写操作在服务实现层通过 `@Transactional` 管理，确保原子性。
+- 主要文件
+  - `backend/src/main/java/com/lowcarbon/platform/config/MybatisPlusConfig.java`
+  - `backend/src/main/java/com/lowcarbon/platform/mapper/*.java`
+  - `backend/src/main/java/com/lowcarbon/platform/repository/*.java`
+  - `backend/src/main/java/com/lowcarbon/platform/repository/impl/*.java`
+  - `backend/src/main/java/com/lowcarbon/platform/service/*.java`
+  - `backend/src/main/java/com/lowcarbon/platform/service/impl/*.java`
+
+## 六、目录结构
 
 - `backend/`：Spring Boot 后端
 - `frontend/`：Vue 前端
 - `backend/sql/lowcarbon_mysql_init.sql`：MySQL 初始化脚本
 - `docker-compose.yml`：一键部署配置
 
-## 六、默认演示账号
+## 七、默认演示账号
 
 - 管理员：`admin / admin123`
 - 居民：`alice / 123456`
 - 居民：`bob / 123456`
 
-## 七、本地启动
+## 八、本地启动
 
 ### 1) 初始化数据库
 
@@ -86,7 +108,7 @@ npm run dev
 
 前端地址：`http://localhost:5173`
 
-## 八、Docker 一键启动
+## 九、Docker 一键启动
 
 ```bash
 docker compose up -d --build
@@ -103,7 +125,7 @@ docker compose up -d --build
 docker compose down
 ```
 
-## 九、核心接口
+## 十、核心接口
 
 ### 登录
 

@@ -1,7 +1,10 @@
 package com.lowcarbon.platform.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.lowcarbon.platform.enums.OrderStatus;
-import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,42 +12,31 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
-@Entity
-@Table(name = "redemption_orders", indexes = {
-        @Index(name = "idx_order_user_time", columnList = "user_id,created_at"),
-        @Index(name = "idx_order_status_time", columnList = "status,created_at"),
-        @Index(name = "idx_order_status_completed", columnList = "status,completed_at")
-})
+@TableName("redemption_orders")
 public class RedemptionOrder {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
+    @TableField("user_id")
+    private Long userId;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "item_id")
-    private MallItem item;
+    @TableField("item_id")
+    private Long itemId;
 
-    @Column(nullable = false)
     private Integer quantity;
 
-    @Column(nullable = false)
+    @TableField("total_points")
     private Integer totalPoints;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private OrderStatus status = OrderStatus.PENDING;
 
-    @Column(name = "created_at", nullable = false)
+    @TableField("created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column(name = "completed_at")
+    @TableField("completed_at")
     private LocalDateTime completedAt;
 
-    @Column(length = 300)
     private String remark;
 }
+

@@ -1,7 +1,10 @@
 package com.lowcarbon.platform.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.lowcarbon.platform.enums.ReportStatus;
-import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,51 +12,44 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
-@Entity
-@Table(name = "behavior_reports", indexes = {
-        @Index(name = "idx_report_user_rule_time", columnList = "user_id,rule_id,submitted_at"),
-        @Index(name = "idx_report_status_time", columnList = "status,submitted_at"),
-        @Index(name = "idx_report_audit_time", columnList = "status,audited_at")
-})
+@TableName("behavior_reports")
 public class BehaviorReport {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
+    @TableField("user_id")
+    private Long userId;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "rule_id")
-    private BehaviorRule rule;
+    @TableField("rule_id")
+    private Long ruleId;
 
-    @Column(nullable = false)
     private Integer quantity;
 
-    @Column(length = 500)
+    @TableField("proof_text")
     private String proofText;
 
-    @Column(length = 500)
+    @TableField("proof_image_url")
     private String proofImageUrl;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private ReportStatus status = ReportStatus.PENDING;
 
-    @Column(name = "submitted_at", nullable = false)
+    @TableField("submitted_at")
     private LocalDateTime submittedAt = LocalDateTime.now();
 
-    @Column(name = "audited_at")
+    @TableField("audited_at")
     private LocalDateTime auditedAt;
 
+    @TableField("auditor_id")
     private Long auditorId;
 
-    @Column(length = 300)
+    @TableField("audit_remark")
     private String auditRemark;
 
+    @TableField("granted_points")
     private Integer grantedPoints;
 
+    @TableField("granted_carbon")
     private Double grantedCarbon;
 }
+

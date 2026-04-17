@@ -1,31 +1,29 @@
 package com.lowcarbon.platform.entity;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-@Entity
-@Table(name = "mall_items")
+@TableName("mall_items")
 public class MallItem {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 80)
     private String name;
 
-    @Column(length = 300)
     private String description;
 
-    @Column(nullable = false)
+    @TableField("points_cost")
     private Integer pointsCost;
 
-    @Column(nullable = false)
     private Integer stock;
 
-    @Column(nullable = false)
     private Boolean enabled = true;
 }
+

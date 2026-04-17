@@ -1,7 +1,10 @@
 package com.lowcarbon.platform.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.lowcarbon.platform.enums.UserRole;
-import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,35 +12,27 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
-@Entity
-@Table(name = "users", indexes = {
-        @Index(name = "idx_user_role_points", columnList = "role,total_points,total_carbon_reduction")
-})
+@TableName("users")
 public class User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    @Column(nullable = false, length = 100)
     private String password;
 
-    @Column(nullable = false, length = 50)
     private String nickname;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private UserRole role = UserRole.RESIDENT;
 
-    @Column(name = "total_points", nullable = false)
+    @TableField("total_points")
     private Integer totalPoints = 0;
 
-    @Column(name = "total_carbon_reduction", nullable = false)
+    @TableField("total_carbon_reduction")
     private Double totalCarbonReduction = 0.0;
 
-    @Column(name = "created_at", nullable = false)
+    @TableField("created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 }
+

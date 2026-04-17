@@ -1,7 +1,10 @@
 package com.lowcarbon.platform.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.lowcarbon.platform.enums.LedgerType;
-import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,35 +12,29 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
-@Entity
-@Table(name = "points_ledgers", indexes = {
-        @Index(name = "idx_ledger_user_time", columnList = "user_id,created_at")
-})
+@TableName("points_ledgers")
 public class PointsLedger {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
+    @TableField("user_id")
+    private Long userId;
 
-    @Column(nullable = false)
+    @TableField("change_points")
     private Integer changePoints;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private LedgerType type;
 
+    @TableField("related_id")
     private Long relatedId;
 
-    @Column(length = 300)
     private String description;
 
-    @Column(nullable = false)
+    @TableField("balance_after")
     private Integer balanceAfter;
 
-    @Column(name = "created_at", nullable = false)
+    @TableField("created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 }
+

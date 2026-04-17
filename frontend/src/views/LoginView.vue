@@ -2,7 +2,6 @@
   <div class="login-page">
     <div class="card login-card">
       <h1 class="title login-title">社区低碳生活积分平台</h1>
-      <p class="subtitle">毕业设计演示系统 · SpringBoot + Vue</p>
 
       <div class="auth-tabs">
         <button
@@ -25,22 +24,44 @@
 
       <template v-if="isLoginMode">
         <div class="login-field">
-          <input v-model.trim="loginForm.username" class="input" placeholder="用户名" />
+          <input
+            v-model.trim="loginForm.username"
+            class="input"
+            placeholder="用户名"
+          />
         </div>
         <div class="login-field compact">
-          <input v-model.trim="loginForm.password" type="password" class="input" placeholder="密码" />
+          <input
+            v-model.trim="loginForm.password"
+            type="password"
+            class="input"
+            placeholder="密码"
+          />
         </div>
       </template>
 
       <template v-else>
         <div class="login-field">
-          <input v-model.trim="registerForm.username" class="input" placeholder="用户名（3-50位）" />
+          <input
+            v-model.trim="registerForm.username"
+            class="input"
+            placeholder="用户名（3-50位）"
+          />
         </div>
         <div class="login-field compact">
-          <input v-model.trim="registerForm.nickname" class="input" placeholder="昵称（2-50位）" />
+          <input
+            v-model.trim="registerForm.nickname"
+            class="input"
+            placeholder="昵称（2-50位）"
+          />
         </div>
         <div class="login-field compact">
-          <input v-model.trim="registerForm.password" type="password" class="input" placeholder="密码（至少6位）" />
+          <input
+            v-model.trim="registerForm.password"
+            type="password"
+            class="input"
+            placeholder="密码（至少6位）"
+          />
         </div>
         <div class="login-field compact">
           <input
@@ -54,11 +75,21 @@
 
       <div v-if="error" class="message">{{ error }}</div>
 
-      <button v-if="isLoginMode" class="btn login-btn" @click="login" :disabled="loading">
-        {{ loading ? '登录中...' : '登录' }}
+      <button
+        v-if="isLoginMode"
+        class="btn login-btn"
+        @click="login"
+        :disabled="loading"
+      >
+        {{ loading ? "登录中..." : "登录" }}
       </button>
-      <button v-else class="btn login-btn" @click="register" :disabled="loading">
-        {{ loading ? '注册中...' : '注册并进入居民端' }}
+      <button
+        v-else
+        class="btn login-btn"
+        @click="register"
+        :disabled="loading"
+      >
+        {{ loading ? "注册中..." : "注册并进入居民端" }}
       </button>
 
       <p class="notice" v-if="isLoginMode">
@@ -74,7 +105,7 @@
 </template>
 
 <script setup>
-import { useLoginPage } from '../composables/useLoginPage'
+import { useLoginPage } from "../composables/useLoginPage";
 
 const {
   loading,
@@ -84,9 +115,8 @@ const {
   registerForm,
   switchMode,
   login,
-  register
-} = useLoginPage()
+  register,
+} = useLoginPage();
 </script>
 
 <style scoped src="../styles/login-view.css"></style>
-

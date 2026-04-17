@@ -39,6 +39,8 @@ export function useResidentPage() {
   const user = JSON.parse(sessionStorage.getItem('user') || '{}')
 
   const message = ref('')
+  const reportMessage = ref('')
+  const reportMessageType = ref('error')
   const profile = reactive({})
   const rules = ref([])
   const reports = ref([])
@@ -198,43 +200,56 @@ export function useResidentPage() {
     }
   }
 
+  function setReportMessage(text, type = 'error') {
+    reportMessage.value = text
+    reportMessageType.value = type
+  }
+
+  function clearReportMessage() {
+    reportMessage.value = ''
+    reportMessageType.value = 'error'
+  }
+
   async function submitReport() {
     message.value = ''
+    clearReportMessage()
 
     if (uploadingImage.value) {
-      message.value = '\u56fe\u7247\u4e0a\u4f20\u4e2d\uff0c\u8bf7\u7a0d\u5019\u518d\u63d0\u4ea4'
+      setReportMessage('\u56fe\u7247\u4e0a\u4f20\u4e2d\uff0c\u8bf7\u7a0d\u5019\u518d\u63d0\u4ea4')
       return
     }
 
     if (!reportForm.ruleId) {
-      message.value = '\u8bf7\u5148\u9009\u62e9\u884c\u4e3a\u89c4\u5219'
+      setReportMessage('\u8bf7\u5148\u9009\u62e9\u884c\u4e3a\u89c4\u5219')
       return
     }
 
     const quantity = Number(reportForm.quantity)
     if (!Number.isInteger(quantity) || quantity <= 0) {
-      message.value = '\u4e0a\u62a5\u6b21\u6570\u5fc5\u987b\u4e3a\u6b63\u6574\u6570'
+      setReportMessage('\u4e0a\u62a5\u6b21\u6570\u5fc5\u987b\u4e3a\u6b63\u6574\u6570')
       return
     }
 
     if (selectedRule.value && quantity > remainingQuota.value) {
-      message.value = `\u8d85\u8fc7\u4eca\u65e5\u4e0a\u62a5\u4e0a\u9650\uff0c\u5f53\u524d\u5269\u4f59 ${remainingQuota.value} \u6b21`
+      setReportMessage(
+        `\u8d85\u8fc7\u4eca\u65e5\u4e0a\u62a5\u4e0a\u9650\uff0c\u5f53\u524d\u5269\u4f59 ${remainingQuota.value} \u6b21`
+      )
       return
     }
 
     if (!reportForm.proofText.trim()) {
-      message.value = '\u8bf7\u586b\u5199\u51ed\u8bc1\u6587\u5b57\u8bf4\u660e'
+      setReportMessage('\u8bf7\u586b\u5199\u51ed\u8bc1\u6587\u5b57\u8bf4\u660e')
       return
     }
 
     if (!reportForm.proofImageUrl) {
-      message.value = '\u8bf7\u5148\u4e0a\u4f20\u51ed\u8bc1\u56fe\u7247'
+      setReportMessage('\u8bf7\u5148\u4e0a\u4f20\u51ed\u8bc1\u56fe\u7247')
       return
     }
 
     const proofText = buildProofText()
     if (!proofText) {
-      message.value = '\u8bf7\u586b\u5199\u51ed\u8bc1\u8bf4\u660e'
+      setReportMessage('\u8bf7\u586b\u5199\u51ed\u8bc1\u8bf4\u660e')
       return
     }
 
@@ -247,8 +262,9 @@ export function useResidentPage() {
       })
       resetReportForm()
       await loadAll()
+      setReportMessage('\u63d0\u4ea4\u6210\u529f\uff0c\u8bf7\u7b49\u5f85\u7ba1\u7406\u5458\u5ba1\u6838', 'success')
     } catch (e) {
-      message.value = e.message
+      setReportMessage(e.message || '\u4e0a\u62a5\u5931\u8d25')
     }
   }
 
@@ -283,7 +299,7 @@ export function useResidentPage() {
   }
 
   async function onProofImageChange(event) {
-    message.value = ''
+    clearReportMessage()
     const file = event.target?.files?.[0]
     if (!file) return
     await uploadProofImage(file)
@@ -291,12 +307,12 @@ export function useResidentPage() {
 
   async function uploadProofImage(file) {
     if (!file.type.startsWith('image/')) {
-      message.value = '\u4ec5\u652f\u6301\u56fe\u7247\u683c\u5f0f\u6587\u4ef6'
+      setReportMessage('\u4ec5\u652f\u6301\u56fe\u7247\u683c\u5f0f\u6587\u4ef6')
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      message.value = '\u56fe\u7247\u5927\u5c0f\u4e0d\u80fd\u8d85\u8fc7 5MB'
+      setReportMessage('\u56fe\u7247\u5927\u5c0f\u4e0d\u80fd\u8d85\u8fc7 5MB')
       return
     }
 
@@ -305,8 +321,9 @@ export function useResidentPage() {
       const { data } = await uploadImage(file)
       reportForm.proofImageUrl = data.url
       proofImagePreviewUrl.value = resolveResidentImageUrl(data.url)
+      setReportMessage('\u56fe\u7247\u4e0a\u4f20\u6210\u529f', 'success')
     } catch (e) {
-      message.value = e.message
+      setReportMessage(e.message || '\u56fe\u7247\u4e0a\u4f20\u5931\u8d25')
     } finally {
       uploadingImage.value = false
     }
@@ -334,6 +351,7 @@ export function useResidentPage() {
   }
 
   function resetReportForm() {
+    clearReportMessage()
     reportForm.ruleId = ''
     reportForm.quantity = 1
     reportForm.proofText = ''
@@ -580,6 +598,8 @@ export function useResidentPage() {
   return {
     user,
     message,
+    reportMessage,
+    reportMessageType,
     profile,
     rules,
     reports,
