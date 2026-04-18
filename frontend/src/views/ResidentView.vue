@@ -12,7 +12,7 @@
 
         <nav class="workspace-nav" aria-label="居民端模块导航">
           <button
-            v-for="section in sidebarSections"
+            v-for="section in filteredSidebarSections"
             :key="section.id"
             class="workspace-nav-item"
             :class="{ active: activeSection === section.id }"
@@ -24,6 +24,9 @@
               <span>{{ section.hint }}</span>
             </span>
           </button>
+          <div v-if="!filteredSidebarSections.length" class="workspace-nav-empty">
+            没有匹配到模块，试试其他关键词
+          </div>
         </nav>
 
         <div class="workspace-footer">
@@ -46,7 +49,16 @@
 
           <div class="workspace-toolbar">
             <div class="workspace-search">
-              <span>搜索功能区</span>
+              <input
+                ref="sectionSearchInputRef"
+                v-model.trim="sectionSearchKeyword"
+                class="workspace-search-input"
+                type="search"
+                placeholder="搜索模块，回车打开首个匹配项"
+                aria-label="搜索居民端模块"
+                @keydown.enter.prevent="openFirstMatchedSection"
+                @keydown.esc.prevent="clearSectionSearch"
+              />
               <kbd>Ctrl K</kbd>
             </div>
             <div class="workspace-actions">
@@ -154,14 +166,27 @@
                 <h3>社区积分排行</h3>
                 <p>查看自己在社区中的积分位置与减碳贡献。</p>
                 <div class="workspace-list">
-                  <article v-for="(row, idx) in leaderboard" :key="row.userId" class="workspace-list-item resident-rank-item">
+                  <article v-for="(row, idx) in pagedLeaderboard" :key="row.userId" class="workspace-list-item resident-rank-item">
                     <div>
-                      <strong>{{ idx + 1 }} · {{ row.nickname }}</strong>
+                      <strong>{{ leaderboardStartIndex + idx + 1 }} · {{ row.nickname }}</strong>
                       <p>{{ row.totalPoints }} 分 · {{ Number(row.totalCarbonReduction || 0).toFixed(2) }} kg</p>
                     </div>
-                    <span class="badge" :class="idx === 0 ? '' : idx < 3 ? 'warn' : ''">TOP {{ idx + 1 }}</span>
+                    <span
+                      class="badge"
+                      :class="leaderboardStartIndex + idx === 0 ? '' : leaderboardStartIndex + idx < 3 ? 'warn' : ''"
+                    >
+                      TOP {{ leaderboardStartIndex + idx + 1 }}
+                    </span>
                   </article>
+                  <div v-if="!pagedLeaderboard.length" class="workspace-empty">排行榜暂无数据</div>
                 </div>
+                <AppPagination
+                  v-if="leaderboard.length > leaderboardPageSize"
+                  :current-page="leaderboardPage"
+                  :total-items="leaderboard.length"
+                  :page-size="leaderboardPageSize"
+                  @change="leaderboardPage = $event"
+                />
               </div>
             </div>
           </section>
@@ -400,11 +425,14 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in reports" :key="row.id">
+                  <tr v-if="!pagedReports.length">
+                    <td colspan="8" class="workspace-table-empty">暂无上报记录</td>
+                  </tr>
+                  <tr v-for="row in pagedReports" :key="row.id">
                     <td>{{ row.id }}</td>
                     <td>{{ row.ruleName }}</td>
                     <td>{{ row.quantity }}</td>
-                    <td><span :class="badgeClass(row.status)">{{ row.status }}</span></td>
+                    <td><span :class="badgeClass(row.status)">{{ formatStatusLabel(row.status) }}</span></td>
                     <td>{{ row.grantedPoints ?? '-' }}</td>
                     <td>{{ fmt(row.submittedAt) }}</td>
                     <td>
@@ -422,6 +450,13 @@
                 </tbody>
               </table>
             </div>
+            <AppPagination
+              v-if="reports.length > reportsPageSize"
+              :current-page="reportsPage"
+              :total-items="reports.length"
+              :page-size="reportsPageSize"
+              @change="reportsPage = $event"
+            />
           </section>
 
           <section v-if="activeSection === 'ledger'" class="workspace-pane">
@@ -443,7 +478,10 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in ledger" :key="row.id">
+                  <tr v-if="!pagedLedger.length">
+                    <td colspan="4" class="workspace-table-empty">暂无积分流水</td>
+                  </tr>
+                  <tr v-for="row in pagedLedger" :key="row.id">
                     <td>{{ row.changePoints > 0 ? '+' : '' }}{{ row.changePoints }}</td>
                     <td>{{ formatLedgerType(row.type) }}</td>
                     <td>{{ row.balanceAfter }}</td>
@@ -452,6 +490,13 @@
                 </tbody>
               </table>
             </div>
+            <AppPagination
+              v-if="ledger.length > ledgerPageSize"
+              :current-page="ledgerPage"
+              :total-items="ledger.length"
+              :page-size="ledgerPageSize"
+              @change="ledgerPage = $event"
+            />
           </section>
 
           <section v-if="activeSection === 'mall'" class="workspace-pane">
@@ -462,8 +507,15 @@
                 <p>从上架商品里选择想兑换的社区好物，操作会直接记录到订单与积分流水。</p>
               </div>
             </div>
+            <div
+              v-if="redeemMessage"
+              class="inline-message"
+              :class="redeemMessageType === 'success' ? 'success' : 'error'"
+            >
+              {{ redeemMessage }}
+            </div>
             <div class="workspace-list">
-              <article v-for="item in items" :key="item.id" class="workspace-list-item">
+              <article v-for="item in pagedItems" :key="item.id" class="workspace-list-item">
                 <div>
                   <strong>{{ item.name }}</strong>
                   <p>{{ item.description || '环保好物，鼓励持续参与。' }}</p>
@@ -474,7 +526,15 @@
                   <button class="btn" @click="redeem(item)">兑换</button>
                 </div>
               </article>
+              <div v-if="!pagedItems.length" class="workspace-empty">商城暂时没有可兑换商品</div>
             </div>
+            <AppPagination
+              v-if="items.length > itemsPageSize"
+              :current-page="itemsPage"
+              :total-items="items.length"
+              :page-size="itemsPageSize"
+              @change="itemsPage = $event"
+            />
           </section>
 
           <section v-if="activeSection === 'orders'" class="workspace-pane">
@@ -499,17 +559,27 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="o in orders" :key="o.id">
+                  <tr v-if="!pagedOrders.length">
+                    <td colspan="6" class="workspace-table-empty">暂无兑换订单</td>
+                  </tr>
+                  <tr v-for="o in pagedOrders" :key="o.id">
                     <td>{{ o.id }}</td>
                     <td>{{ o.itemName }}</td>
                     <td>{{ o.quantity }}</td>
                     <td>{{ o.totalPoints }}</td>
-                    <td><span :class="badgeClass(o.status)">{{ o.status }}</span></td>
+                    <td><span :class="badgeClass(o.status)">{{ formatStatusLabel(o.status) }}</span></td>
                     <td>{{ fmt(o.createdAt) }}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
+            <AppPagination
+              v-if="orders.length > ordersPageSize"
+              :current-page="ordersPage"
+              :total-items="orders.length"
+              :page-size="ordersPageSize"
+              @change="ordersPage = $event"
+            />
           </section>
 
           <section v-if="activeSection === 'profile'" class="workspace-pane">
@@ -626,6 +696,7 @@ import { LabelLayout, UniversalTransition } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
 import { useResidentPage } from '../composables/useResidentPage'
 import { updateResidentProfile } from '../services/residentService'
+import AppPagination from '../components/AppPagination.vue'
 
 use([PieChart, TooltipComponent, LegendComponent, LabelLayout, UniversalTransition, CanvasRenderer])
 
@@ -639,9 +710,70 @@ const residentSections = [
   { id: 'profile', short: '我', label: '个人中心', hint: '查看与编辑资料', description: '集中查看并维护你的基础资料、个人介绍与常用标签。', visibleInSidebar: false }
 ]
 
+const workspaceStateStorageKey = 'lowcarbon:resident-workspace:v1'
+
+function isValidSectionId(sectionId) {
+  return residentSections.some((section) => section.id === sectionId)
+}
+
+function restoreWorkspaceState() {
+  const defaultState = {
+    openTabs: ['overview'],
+    activeSection: 'overview'
+  }
+  const raw = sessionStorage.getItem(workspaceStateStorageKey)
+  if (!raw) {
+    return defaultState
+  }
+
+  try {
+    const parsed = JSON.parse(raw)
+    const openTabs = Array.isArray(parsed.openTabs)
+      ? parsed.openTabs.filter((id) => isValidSectionId(id))
+      : []
+    const activeSection = isValidSectionId(parsed.activeSection) ? parsed.activeSection : openTabs[0]
+    const normalizedTabs = openTabs.length ? openTabs : ['overview']
+
+    if (activeSection && !normalizedTabs.includes(activeSection)) {
+      normalizedTabs.push(activeSection)
+    }
+
+    return {
+      openTabs: normalizedTabs,
+      activeSection: activeSection || normalizedTabs[0] || null
+    }
+  } catch {
+    return defaultState
+  }
+}
+
+function persistWorkspaceState() {
+  sessionStorage.setItem(
+    workspaceStateStorageKey,
+    JSON.stringify({
+      openTabs: openTabs.value,
+      activeSection: activeSection.value
+    })
+  )
+}
+
+const restoredWorkspaceState = restoreWorkspaceState()
+const sectionSearchKeyword = ref('')
+const sectionSearchInputRef = ref(null)
 const sidebarSections = computed(() => residentSections.filter((section) => section.visibleInSidebar))
-const openTabs = ref(['overview'])
-const activeSection = ref('overview')
+const filteredSidebarSections = computed(() => {
+  const keyword = sectionSearchKeyword.value.trim().toLowerCase()
+  if (!keyword) {
+    return sidebarSections.value
+  }
+
+  return sidebarSections.value.filter((section) => {
+    const searchableText = `${section.label} ${section.hint} ${section.description}`.toLowerCase()
+    return searchableText.includes(keyword)
+  })
+})
+const openTabs = ref(restoredWorkspaceState.openTabs)
+const activeSection = ref(restoredWorkspaceState.activeSection)
 const avatarMenuOpen = ref(false)
 const profileSaveMessage = ref('')
 const profileSaveType = ref('success')
@@ -657,6 +789,9 @@ const activeSectionMeta = computed(
 )
 
 function openSection(sectionId) {
+  if (!isValidSectionId(sectionId)) {
+    return
+  }
   if (!openTabs.value.includes(sectionId)) {
     openTabs.value.push(sectionId)
   }
@@ -684,6 +819,32 @@ function closeSection(sectionId) {
 function openProfileCenter() {
   openSection('profile')
   avatarMenuOpen.value = false
+}
+
+function clearSectionSearch() {
+  sectionSearchKeyword.value = ''
+}
+
+function openFirstMatchedSection() {
+  const firstMatch = filteredSidebarSections.value[0]
+  if (firstMatch) {
+    openSection(firstMatch.id)
+  }
+}
+
+function focusSectionSearch() {
+  if (!sectionSearchInputRef.value) {
+    return
+  }
+  sectionSearchInputRef.value.focus()
+  sectionSearchInputRef.value.select()
+}
+
+function handleWorkspaceShortcut(event) {
+  if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === 'k') {
+    event.preventDefault()
+    focusSectionSearch()
+  }
 }
 
 async function saveProfile() {
@@ -718,6 +879,8 @@ const {
   message,
   reportMessage,
   reportMessageType,
+  redeemMessage,
+  redeemMessageType,
   profile,
   rules,
   reports,
@@ -762,6 +925,7 @@ const {
   resolveImageUrl,
   openImage,
   badgeClass,
+  formatStatusLabel,
   formatLedgerType,
   fmt,
   logout
@@ -848,6 +1012,53 @@ const avatarInitials = computed(() => {
   return text.slice(0, 2).toUpperCase()
 })
 
+const leaderboardPageSize = 5
+const reportsPageSize = 5
+const ledgerPageSize = 5
+const itemsPageSize = 4
+const ordersPageSize = 5
+
+const leaderboardPage = ref(1)
+const reportsPage = ref(1)
+const ledgerPage = ref(1)
+const itemsPage = ref(1)
+const ordersPage = ref(1)
+
+function clampPage(pageRef, totalItems, pageSize) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  if (pageRef.value > totalPages) {
+    pageRef.value = totalPages
+  }
+}
+
+const leaderboardStartIndex = computed(() => (leaderboardPage.value - 1) * leaderboardPageSize)
+const pagedLeaderboard = computed(() =>
+  leaderboard.value.slice(leaderboardStartIndex.value, leaderboardStartIndex.value + leaderboardPageSize)
+)
+const pagedReports = computed(() => {
+  const start = (reportsPage.value - 1) * reportsPageSize
+  return reports.value.slice(start, start + reportsPageSize)
+})
+const pagedLedger = computed(() => {
+  const start = (ledgerPage.value - 1) * ledgerPageSize
+  return ledger.value.slice(start, start + ledgerPageSize)
+})
+const pagedItems = computed(() => {
+  const start = (itemsPage.value - 1) * itemsPageSize
+  return items.value.slice(start, start + itemsPageSize)
+})
+const pagedOrders = computed(() => {
+  const start = (ordersPage.value - 1) * ordersPageSize
+  return orders.value.slice(start, start + ordersPageSize)
+})
+
+watch(() => leaderboard.value.length, (value) => clampPage(leaderboardPage, value, leaderboardPageSize), { immediate: true })
+watch(() => reports.value.length, (value) => clampPage(reportsPage, value, reportsPageSize), { immediate: true })
+watch(() => ledger.value.length, (value) => clampPage(ledgerPage, value, ledgerPageSize), { immediate: true })
+watch(() => items.value.length, (value) => clampPage(itemsPage, value, itemsPageSize), { immediate: true })
+watch(() => orders.value.length, (value) => clampPage(ordersPage, value, ordersPageSize), { immediate: true })
+watch([openTabs, activeSection], persistWorkspaceState, { deep: true })
+
 const behaviorChartRef = ref(null)
 let behaviorChart = null
 
@@ -911,6 +1122,12 @@ function buildBehaviorChartOption() {
 
 function renderBehaviorChart() {
   if (!behaviorChartRef.value) return
+
+  if (behaviorChart && behaviorChart.getDom() !== behaviorChartRef.value) {
+    behaviorChart.dispose()
+    behaviorChart = null
+  }
+
   if (!behaviorChart) {
     behaviorChart = init(behaviorChartRef.value)
   }
@@ -944,7 +1161,13 @@ function resizeBehaviorChart() {
 watch(
   [behaviorRatioData, activeSection],
   async () => {
-    if (activeSection.value !== 'overview') return
+    if (activeSection.value !== 'overview') {
+      if (behaviorChart) {
+        behaviorChart.dispose()
+        behaviorChart = null
+      }
+      return
+    }
     await nextTick()
     renderBehaviorChart()
     resizeBehaviorChart()
@@ -956,10 +1179,12 @@ onMounted(async () => {
   await nextTick()
   renderBehaviorChart()
   window.addEventListener('resize', resizeBehaviorChart)
+  window.addEventListener('keydown', handleWorkspaceShortcut)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeBehaviorChart)
+  window.removeEventListener('keydown', handleWorkspaceShortcut)
   if (behaviorChart) {
     behaviorChart.dispose()
     behaviorChart = null

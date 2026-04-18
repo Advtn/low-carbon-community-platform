@@ -12,7 +12,7 @@
 
         <nav class="workspace-nav" aria-label="管理员模块导航">
           <button
-            v-for="section in sidebarSections"
+            v-for="section in filteredSidebarSections"
             :key="section.id"
             class="workspace-nav-item"
             :class="{ active: activeSection === section.id }"
@@ -24,6 +24,9 @@
               <span>{{ section.hint }}</span>
             </span>
           </button>
+          <div v-if="!filteredSidebarSections.length" class="workspace-nav-empty">
+            没有匹配到模块，试试其他关键词
+          </div>
         </nav>
 
         <div class="workspace-footer">
@@ -44,7 +47,16 @@
 
           <div class="workspace-toolbar">
             <div class="workspace-search">
-              <span>搜索工作台</span>
+              <input
+                ref="sectionSearchInputRef"
+                v-model.trim="sectionSearchKeyword"
+                class="workspace-search-input"
+                type="search"
+                placeholder="搜索模块，回车打开首个匹配项"
+                aria-label="搜索管理端模块"
+                @keydown.enter.prevent="openFirstMatchedSection"
+                @keydown.esc.prevent="clearSectionSearch"
+              />
               <kbd>Ctrl K</kbd>
             </div>
             <div class="workspace-actions">
@@ -97,7 +109,22 @@
         </div>
 
         <div class="workspace-content">
-          <div v-if="message" class="inline-message error">{{ message }}</div>
+          <div
+            v-if="message"
+            class="action-toast"
+            :class="messageType === 'success' ? 'is-success' : 'is-error'"
+            :style="{ '--toast-duration': messageType === 'success' ? '3.6s' : '5s' }"
+            role="status"
+            :aria-live="messageType === 'success' ? 'polite' : 'assertive'"
+          >
+            <span class="action-toast-icon" aria-hidden="true">{{ messageType === 'success' ? '✓' : '!' }}</span>
+            <div class="action-toast-body">
+              <p class="action-toast-title">{{ messageType === 'success' ? '操作成功' : '操作失败' }}</p>
+              <p class="action-toast-text">{{ message }}</p>
+              <span class="action-toast-progress" aria-hidden="true"></span>
+            </div>
+            <button class="action-toast-close" type="button" aria-label="关闭提示" @click="clearMessage">×</button>
+          </div>
 
           <div v-if="!activeSection" class="workspace-empty-stage">
             <span class="workspace-kicker">Workspace</span>
@@ -207,73 +234,123 @@
                 <h2>用户管理</h2>
                 <p>创建居民与管理员账号，并对昵称、角色与密码进行维护。</p>
               </div>
-              <span class="badge">{{ users.length }} 个账号</span>
+              <div class="workspace-actions">
+                <span class="badge">{{ users.length }} 个账号</span>
+                <button class="btn" @click="openCreateUserDialog">新增用户</button>
+              </div>
             </div>
 
-            <div class="workspace-form">
-              <div class="workspace-form-grid">
-                <label class="field">
-                  <span class="field-label">登录用户名</span>
-                  <input v-model.trim="userForm.username" class="input" placeholder="例如：resident_01" />
-                </label>
-                <label class="field">
-                  <span class="field-label">用户昵称</span>
-                  <input v-model.trim="userForm.nickname" class="input" placeholder="例如：张三" />
-                </label>
-              </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>用户名</th>
+                    <th>昵称</th>
+                    <th>角色</th>
+                    <th>积分</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="!pagedUsers.length">
+                    <td colspan="6" class="workspace-table-empty">暂无用户数据</td>
+                  </tr>
+                  <tr v-for="u in pagedUsers" :key="u.id">
+                    <td>{{ u.id }}</td>
+                    <td>{{ u.username }}</td>
+                    <td>{{ u.nickname }}</td>
+                    <td>{{ u.role }}</td>
+                    <td>{{ u.totalPoints }}</td>
+                    <td>
+                      <div class="workspace-actions admin-mini-actions">
+                        <button class="btn secondary" @click="openEditUserDialog(u)">编辑</button>
+                        <button class="btn danger" @click="deleteUser(u.id)">删除</button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <AppPagination
+              v-if="users.length > usersPageSize"
+              :current-page="usersPage"
+              :total-items="users.length"
+              :page-size="usersPageSize"
+              @change="usersPage = $event"
+            />
 
-              <div class="workspace-form-grid">
-                <label class="field">
-                  <span class="field-label">登录密码</span>
-                  <input
-                    v-model.trim="userForm.password"
-                    class="input"
-                    :placeholder="userForm.id ? '留空表示不修改密码' : '至少 6 位'"
-                  />
-                </label>
-                <label class="field">
-                  <span class="field-label">角色</span>
-                  <select v-model="userForm.role" class="select">
-                    <option value="RESIDENT">居民（RESIDENT）</option>
-                    <option value="ADMIN">管理员（ADMIN）</option>
-                  </select>
-                </label>
-              </div>
+            <div v-if="userDialogOpen" class="workspace-modal-mask" @click.self="closeUserDialog">
+              <section class="workspace-modal-card">
+                <header class="workspace-modal-head">
+                  <div>
+                    <span class="workspace-kicker">User</span>
+                    <h3>{{ userForm.id ? '编辑用户' : '新增用户' }}</h3>
+                  </div>
+                  <button class="workspace-modal-close" type="button" aria-label="关闭弹窗" @click="closeUserDialog">×</button>
+                </header>
 
-              <div class="workspace-actions">
-                <button class="btn" @click="saveUser">{{ userForm.id ? '更新用户' : '新增用户' }}</button>
-                <button class="btn secondary" @click="resetUserForm">清空</button>
-              </div>
+                <div class="workspace-modal-body">
+                  <div class="workspace-form-grid">
+                    <label class="field">
+                      <span class="field-label">登录用户名</span>
+                      <input
+                        v-model.trim="userForm.username"
+                        class="input"
+                        :class="{ 'has-error': userFormErrors.username }"
+                        placeholder="例如：resident_01"
+                        @input="clearUserFieldError('username')"
+                      />
+                      <span v-if="userFormErrors.username" class="field-error-text">{{ userFormErrors.username }}</span>
+                    </label>
+                    <label class="field">
+                      <span class="field-label">用户昵称</span>
+                      <input
+                        v-model.trim="userForm.nickname"
+                        class="input"
+                        :class="{ 'has-error': userFormErrors.nickname }"
+                        placeholder="例如：张三"
+                        @input="clearUserFieldError('nickname')"
+                      />
+                      <span v-if="userFormErrors.nickname" class="field-error-text">{{ userFormErrors.nickname }}</span>
+                    </label>
+                  </div>
 
-              <div class="table-wrap">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>用户名</th>
-                      <th>昵称</th>
-                      <th>角色</th>
-                      <th>积分</th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="u in users" :key="u.id">
-                      <td>{{ u.id }}</td>
-                      <td>{{ u.username }}</td>
-                      <td>{{ u.nickname }}</td>
-                      <td>{{ u.role }}</td>
-                      <td>{{ u.totalPoints }}</td>
-                      <td>
-                        <div class="workspace-actions admin-mini-actions">
-                          <button class="btn secondary" @click="editUser(u)">编辑</button>
-                          <button class="btn danger" @click="deleteUser(u.id)">删除</button>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                  <div class="workspace-form-grid">
+                    <label class="field">
+                      <span class="field-label">登录密码</span>
+                      <input
+                        v-model.trim="userForm.password"
+                        class="input"
+                        :class="{ 'has-error': userFormErrors.password }"
+                        :placeholder="userForm.id ? '留空表示不修改密码' : '至少 6 位'"
+                        @input="clearUserFieldError('password')"
+                      />
+                      <span v-if="userFormErrors.password" class="field-error-text">{{ userFormErrors.password }}</span>
+                    </label>
+                    <label class="field">
+                      <span class="field-label">角色</span>
+                      <select
+                        v-model="userForm.role"
+                        class="select"
+                        :class="{ 'has-error': userFormErrors.role }"
+                        @change="clearUserFieldError('role')"
+                      >
+                        <option value="RESIDENT">居民（RESIDENT）</option>
+                        <option value="ADMIN">管理员（ADMIN）</option>
+                      </select>
+                      <span v-if="userFormErrors.role" class="field-error-text">{{ userFormErrors.role }}</span>
+                    </label>
+                  </div>
+                </div>
+
+                <footer class="workspace-actions workspace-modal-actions">
+                  <button class="btn" type="button" @click="submitUserDialog">
+                    {{ userForm.id ? '保存更新' : '确认新增' }}
+                  </button>
+                  <button class="btn secondary" type="button" @click="closeUserDialog">取消</button>
+                </footer>
+              </section>
             </div>
           </section>
 
@@ -284,91 +361,150 @@
                 <h2>行为规则配置</h2>
                 <p>维护积分、减碳量、日上限与启停状态，形成居民端的激励逻辑。</p>
               </div>
-              <span class="badge">{{ rules.length }} 条规则</span>
+              <div class="workspace-actions">
+                <span class="badge">{{ rules.length }} 条规则</span>
+                <button class="btn" @click="openCreateRuleDialog">新增规则</button>
+              </div>
             </div>
 
-            <div class="workspace-form">
-              <div class="workspace-form-grid">
-                <label class="field">
-                  <span class="field-label">规则名称</span>
-                  <input v-model.trim="ruleForm.name" class="input" placeholder="例如：步行或骑行出行" />
-                </label>
-                <label class="field">
-                  <span class="field-label">单次奖励积分</span>
-                  <input v-model.number="ruleForm.pointsPerAction" type="number" min="0" class="input" />
-                </label>
-              </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>名称</th>
+                    <th>积分</th>
+                    <th>减碳</th>
+                    <th>日限</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="!pagedRules.length">
+                    <td colspan="7" class="workspace-table-empty">暂无规则数据</td>
+                  </tr>
+                  <tr v-for="r in pagedRules" :key="r.id">
+                    <td>{{ r.id }}</td>
+                    <td>{{ r.name }}</td>
+                    <td>{{ r.pointsPerAction }}</td>
+                    <td>{{ r.carbonReductionPerAction }}</td>
+                    <td>{{ r.dailyLimit }}</td>
+                    <td><span :class="r.active ? 'badge' : 'badge err'">{{ r.active ? '启用' : '停用' }}</span></td>
+                    <td>
+                      <div class="workspace-actions admin-mini-actions">
+                        <button class="btn secondary" @click="openEditRuleDialog(r)">编辑</button>
+                        <button class="btn danger" @click="deleteRule(r.id)">删除</button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <AppPagination
+              v-if="rules.length > rulesPageSize"
+              :current-page="rulesPage"
+              :total-items="rules.length"
+              :page-size="rulesPageSize"
+              @change="rulesPage = $event"
+            />
 
-              <div class="workspace-form-grid">
-                <label class="field">
-                  <span class="field-label">单次减碳量（kg）</span>
-                  <input v-model.number="ruleForm.carbonReductionPerAction" type="number" min="0" step="0.1" class="input" />
-                </label>
-                <label class="field">
-                  <span class="field-label">每日上报上限</span>
-                  <input v-model.number="ruleForm.dailyLimit" type="number" min="1" class="input" />
-                </label>
-              </div>
+            <div v-if="ruleDialogOpen" class="workspace-modal-mask" @click.self="closeRuleDialog">
+              <section class="workspace-modal-card">
+                <header class="workspace-modal-head">
+                  <div>
+                    <span class="workspace-kicker">Rule</span>
+                    <h3>{{ ruleForm.id ? '编辑规则' : '新增规则' }}</h3>
+                  </div>
+                  <button class="workspace-modal-close" type="button" aria-label="关闭弹窗" @click="closeRuleDialog">×</button>
+                </header>
 
-              <div class="workspace-form-grid">
-                <label class="field">
-                  <span class="field-label">规则状态</span>
-                  <select v-model="ruleForm.active" class="select">
-                    <option :value="true">启用</option>
-                    <option :value="false">停用</option>
-                  </select>
-                </label>
-                <div class="field">
-                  <span class="field-label">口径提醒</span>
-                  <span class="field-help">建议写清居民需要提供的凭证与实际行为口径。</span>
+                <div class="workspace-modal-body">
+                  <div class="workspace-form-grid">
+                    <label class="field">
+                      <span class="field-label">规则名称</span>
+                      <input
+                        v-model.trim="ruleForm.name"
+                        class="input"
+                        :class="{ 'has-error': ruleFormErrors.name }"
+                        placeholder="例如：步行或骑行出行"
+                        @input="clearRuleFieldError('name')"
+                      />
+                      <span v-if="ruleFormErrors.name" class="field-error-text">{{ ruleFormErrors.name }}</span>
+                    </label>
+                    <label class="field">
+                      <span class="field-label">单次奖励积分</span>
+                      <input
+                        v-model.number="ruleForm.pointsPerAction"
+                        type="number"
+                        min="0"
+                        class="input"
+                        :class="{ 'has-error': ruleFormErrors.pointsPerAction }"
+                        @input="clearRuleFieldError('pointsPerAction')"
+                      />
+                      <span v-if="ruleFormErrors.pointsPerAction" class="field-error-text">{{ ruleFormErrors.pointsPerAction }}</span>
+                    </label>
+                  </div>
+
+                  <div class="workspace-form-grid">
+                    <label class="field">
+                      <span class="field-label">单次减碳量（kg）</span>
+                      <input
+                        v-model.number="ruleForm.carbonReductionPerAction"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        class="input"
+                        :class="{ 'has-error': ruleFormErrors.carbonReductionPerAction }"
+                        @input="clearRuleFieldError('carbonReductionPerAction')"
+                      />
+                      <span v-if="ruleFormErrors.carbonReductionPerAction" class="field-error-text">{{ ruleFormErrors.carbonReductionPerAction }}</span>
+                    </label>
+                    <label class="field">
+                      <span class="field-label">每日上报上限</span>
+                      <input
+                        v-model.number="ruleForm.dailyLimit"
+                        type="number"
+                        min="1"
+                        class="input"
+                        :class="{ 'has-error': ruleFormErrors.dailyLimit }"
+                        @input="clearRuleFieldError('dailyLimit')"
+                      />
+                      <span v-if="ruleFormErrors.dailyLimit" class="field-error-text">{{ ruleFormErrors.dailyLimit }}</span>
+                    </label>
+                  </div>
+
+                  <div class="workspace-form-grid">
+                    <label class="field">
+                      <span class="field-label">规则状态</span>
+                      <select v-model="ruleForm.active" class="select">
+                        <option :value="true">启用</option>
+                        <option :value="false">停用</option>
+                      </select>
+                    </label>
+                    <div class="field">
+                      <span class="field-label">口径提醒</span>
+                      <span class="field-help">建议写清居民需要提供的凭证与实际行为口径。</span>
+                    </div>
+                  </div>
+
+                  <label class="field">
+                    <span class="field-label">规则说明</span>
+                    <textarea
+                      v-model.trim="ruleForm.description"
+                      class="textarea"
+                      placeholder="例如：通勤使用步行或骑行方式，并上传简要说明与凭证图片。"
+                    ></textarea>
+                  </label>
                 </div>
-              </div>
 
-              <label class="field">
-                <span class="field-label">规则说明</span>
-                <textarea
-                  v-model.trim="ruleForm.description"
-                  class="textarea"
-                  placeholder="例如：通勤使用步行或骑行方式，并上传简要说明与凭证图片。"
-                ></textarea>
-              </label>
-
-              <div class="workspace-actions">
-                <button class="btn" @click="saveRule">{{ ruleForm.id ? '更新规则' : '新增规则' }}</button>
-                <button class="btn secondary" @click="resetRuleForm">清空</button>
-              </div>
-
-              <div class="table-wrap">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>名称</th>
-                      <th>积分</th>
-                      <th>减碳</th>
-                      <th>日限</th>
-                      <th>状态</th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="r in rules" :key="r.id">
-                      <td>{{ r.id }}</td>
-                      <td>{{ r.name }}</td>
-                      <td>{{ r.pointsPerAction }}</td>
-                      <td>{{ r.carbonReductionPerAction }}</td>
-                      <td>{{ r.dailyLimit }}</td>
-                      <td><span :class="r.active ? 'badge' : 'badge err'">{{ r.active ? '启用' : '停用' }}</span></td>
-                      <td>
-                        <div class="workspace-actions admin-mini-actions">
-                          <button class="btn secondary" @click="editRule(r)">编辑</button>
-                          <button class="btn danger" @click="deleteRule(r.id)">删除</button>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                <footer class="workspace-actions workspace-modal-actions">
+                  <button class="btn" type="button" @click="submitRuleDialog">
+                    {{ ruleForm.id ? '保存更新' : '确认新增' }}
+                  </button>
+                  <button class="btn secondary" type="button" @click="closeRuleDialog">取消</button>
+                </footer>
+              </section>
             </div>
           </section>
 
@@ -397,7 +533,10 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in pendingReports" :key="row.id">
+                  <tr v-if="!pagedPendingReports.length">
+                    <td colspan="8" class="workspace-table-empty">当前没有待审核上报</td>
+                  </tr>
+                  <tr v-for="row in pagedPendingReports" :key="row.id">
                     <td>{{ row.id }}</td>
                     <td>{{ row.nickname }}</td>
                     <td>{{ row.ruleName }}</td>
@@ -424,6 +563,13 @@
                 </tbody>
               </table>
             </div>
+            <AppPagination
+              v-if="pendingReports.length > pendingReportsPageSize"
+              :current-page="pendingReportsPage"
+              :total-items="pendingReports.length"
+              :page-size="pendingReportsPageSize"
+              @change="pendingReportsPage = $event"
+            />
           </section>
 
           <section v-if="activeSection === 'items'" class="workspace-pane">
@@ -433,89 +579,137 @@
                 <h2>商城商品管理</h2>
                 <p>在统一工作区里维护商品、库存和上下架状态，让兑换端与库存治理同步更新。</p>
               </div>
-              <div class="workspace-inline-stats">
-                <div class="stat">
-                  <span>商品总数</span>
-                  <strong>{{ items.length }}</strong>
+              <div class="workspace-actions">
+                <div class="workspace-inline-stats admin-items-summary">
+                  <div class="stat">
+                    <span>商品总数</span>
+                    <strong>{{ items.length }}</strong>
+                  </div>
+                  <div class="stat">
+                    <span>上架商品</span>
+                    <strong>{{ enabledItemCount }}</strong>
+                  </div>
+                  <div class="stat">
+                    <span>总库存</span>
+                    <strong>{{ totalItemStock }}</strong>
+                  </div>
                 </div>
-                <div class="stat">
-                  <span>上架商品</span>
-                  <strong>{{ enabledItemCount }}</strong>
-                </div>
-                <div class="stat">
-                  <span>总库存</span>
-                  <strong>{{ totalItemStock }}</strong>
-                </div>
+                <button class="btn" @click="openCreateItemDialog">新增商品</button>
               </div>
             </div>
 
-            <div class="workspace-grid-2">
-              <div class="workspace-form">
-                <div class="workspace-form-grid">
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>名称</th>
+                    <th>单价</th>
+                    <th>库存</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="!pagedItems.length">
+                    <td colspan="6" class="workspace-table-empty">暂无商品数据</td>
+                  </tr>
+                  <tr v-for="i in pagedItems" :key="i.id">
+                    <td>{{ i.id }}</td>
+                    <td>{{ i.name }}</td>
+                    <td>{{ i.pointsCost }}</td>
+                    <td>{{ i.stock }}</td>
+                    <td><span :class="i.enabled ? 'badge' : 'badge err'">{{ i.enabled ? '上架' : '下架' }}</span></td>
+                    <td>
+                      <div class="workspace-actions admin-mini-actions">
+                        <button class="btn secondary" @click="openEditItemDialog(i)">编辑</button>
+                        <button class="btn danger" @click="deleteItem(i.id)">删除</button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <AppPagination
+              v-if="items.length > itemsPageSize"
+              :current-page="itemsPage"
+              :total-items="items.length"
+              :page-size="itemsPageSize"
+              @change="itemsPage = $event"
+            />
+
+            <div v-if="itemDialogOpen" class="workspace-modal-mask" @click.self="closeItemDialog">
+              <section class="workspace-modal-card">
+                <header class="workspace-modal-head">
+                  <div>
+                    <span class="workspace-kicker">Item</span>
+                    <h3>{{ itemForm.id ? '编辑商品' : '新增商品' }}</h3>
+                  </div>
+                  <button class="workspace-modal-close" type="button" aria-label="关闭弹窗" @click="closeItemDialog">×</button>
+                </header>
+
+                <div class="workspace-modal-body">
+                  <div class="workspace-form-grid">
+                    <label class="field">
+                      <span class="field-label">商品名称</span>
+                      <input
+                        v-model.trim="itemForm.name"
+                        class="input"
+                        :class="{ 'has-error': itemFormErrors.name }"
+                        placeholder="例如：环保帆布袋"
+                        @input="clearItemFieldError('name')"
+                      />
+                      <span v-if="itemFormErrors.name" class="field-error-text">{{ itemFormErrors.name }}</span>
+                    </label>
+                    <label class="field">
+                      <span class="field-label">兑换积分单价</span>
+                      <input
+                        v-model.number="itemForm.pointsCost"
+                        type="number"
+                        min="1"
+                        class="input"
+                        :class="{ 'has-error': itemFormErrors.pointsCost }"
+                        @input="clearItemFieldError('pointsCost')"
+                      />
+                      <span v-if="itemFormErrors.pointsCost" class="field-error-text">{{ itemFormErrors.pointsCost }}</span>
+                    </label>
+                  </div>
+
+                  <div class="workspace-form-grid">
+                    <label class="field">
+                      <span class="field-label">库存数量</span>
+                      <input
+                        v-model.number="itemForm.stock"
+                        type="number"
+                        min="0"
+                        class="input"
+                        :class="{ 'has-error': itemFormErrors.stock }"
+                        @input="clearItemFieldError('stock')"
+                      />
+                      <span v-if="itemFormErrors.stock" class="field-error-text">{{ itemFormErrors.stock }}</span>
+                    </label>
+                    <label class="field">
+                      <span class="field-label">上架状态</span>
+                      <select v-model="itemForm.enabled" class="select">
+                        <option :value="true">上架</option>
+                        <option :value="false">下架</option>
+                      </select>
+                    </label>
+                  </div>
+
                   <label class="field">
-                    <span class="field-label">商品名称</span>
-                    <input v-model.trim="itemForm.name" class="input" placeholder="例如：环保帆布袋" />
-                  </label>
-                  <label class="field">
-                    <span class="field-label">兑换积分单价</span>
-                    <input v-model.number="itemForm.pointsCost" type="number" min="1" class="input" />
+                    <span class="field-label">商品说明</span>
+                    <textarea v-model.trim="itemForm.description" class="textarea" placeholder="例如：适合居民日常重复使用的环保生活用品。"></textarea>
                   </label>
                 </div>
 
-                <div class="workspace-form-grid">
-                  <label class="field">
-                    <span class="field-label">库存数量</span>
-                    <input v-model.number="itemForm.stock" type="number" min="0" class="input" />
-                  </label>
-                  <label class="field">
-                    <span class="field-label">上架状态</span>
-                    <select v-model="itemForm.enabled" class="select">
-                      <option :value="true">上架</option>
-                      <option :value="false">下架</option>
-                    </select>
-                  </label>
-                </div>
-
-                <label class="field">
-                  <span class="field-label">商品说明</span>
-                  <textarea v-model.trim="itemForm.description" class="textarea" placeholder="例如：适合居民日常重复使用的环保生活用品。"></textarea>
-                </label>
-
-                <div class="workspace-actions">
-                  <button class="btn" @click="saveItem">{{ itemForm.id ? '更新商品' : '新增商品' }}</button>
-                  <button class="btn secondary" @click="resetItemForm">清空</button>
-                </div>
-              </div>
-
-              <div class="table-wrap">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>名称</th>
-                      <th>单价</th>
-                      <th>库存</th>
-                      <th>状态</th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="i in items" :key="i.id">
-                      <td>{{ i.id }}</td>
-                      <td>{{ i.name }}</td>
-                      <td>{{ i.pointsCost }}</td>
-                      <td>{{ i.stock }}</td>
-                      <td><span :class="i.enabled ? 'badge' : 'badge err'">{{ i.enabled ? '上架' : '下架' }}</span></td>
-                      <td>
-                        <div class="workspace-actions admin-mini-actions">
-                          <button class="btn secondary" @click="editItem(i)">编辑</button>
-                          <button class="btn danger" @click="deleteItem(i.id)">删除</button>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                <footer class="workspace-actions workspace-modal-actions">
+                  <button class="btn" type="button" @click="submitItemDialog">
+                    {{ itemForm.id ? '保存更新' : '确认新增' }}
+                  </button>
+                  <button class="btn secondary" type="button" @click="closeItemDialog">取消</button>
+                </footer>
+              </section>
             </div>
           </section>
 
@@ -544,24 +738,35 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="o in orders" :key="o.id">
+                  <tr v-if="!pagedOrders.length">
+                    <td colspan="8" class="workspace-table-empty">暂无订单数据</td>
+                  </tr>
+                  <tr v-for="o in pagedOrders" :key="o.id">
                     <td>{{ o.id }}</td>
                     <td>{{ o.nickname }}</td>
                     <td>{{ o.itemName }}</td>
                     <td>{{ o.quantity }}</td>
                     <td>{{ o.totalPoints }}</td>
-                    <td><span :class="badgeClass(o.status)">{{ o.status }}</span></td>
+                    <td><span :class="badgeClass(o.status)">{{ formatStatusLabel(o.status) }}</span></td>
                     <td>{{ fmt(o.createdAt) }}</td>
                     <td>
-                      <div class="workspace-actions admin-mini-actions">
+                      <div v-if="o.status === 'PENDING'" class="workspace-actions admin-mini-actions">
                         <button class="btn" @click="updateOrder(o.id, 'COMPLETED')">完成</button>
                         <button class="btn danger" @click="updateOrder(o.id, 'CANCELLED')">取消并退款</button>
                       </div>
+                      <span v-else class="admin-order-locked">已结束</span>
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
+            <AppPagination
+              v-if="orders.length > ordersPageSize"
+              :current-page="ordersPage"
+              :total-items="orders.length"
+              :page-size="ordersPageSize"
+              @change="ordersPage = $event"
+            />
           </section>
 
           <section v-if="activeSection === 'profile'" class="workspace-pane">
@@ -670,9 +875,10 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useAdminPage } from '../composables/useAdminPage'
 import { updateAdminProfile } from '../services/adminService'
+import AppPagination from '../components/AppPagination.vue'
 
 const adminSections = [
   { id: 'overview', short: '总', label: '总览', hint: '今日运营概况', description: '先看今天的社区脉搏、库存情况和待办任务。', visibleInSidebar: true },
@@ -684,12 +890,93 @@ const adminSections = [
   { id: 'profile', short: '我', label: '个人中心', hint: '查看与编辑资料', description: '集中查看并维护你的基础资料、岗位信息与个人介绍。', visibleInSidebar: false }
 ]
 
+const workspaceStateStorageKey = 'lowcarbon:admin-workspace:v1'
+
+function isValidSectionId(sectionId) {
+  return adminSections.some((section) => section.id === sectionId)
+}
+
+function restoreWorkspaceState() {
+  const defaultState = {
+    openTabs: ['overview'],
+    activeSection: 'overview'
+  }
+  const raw = sessionStorage.getItem(workspaceStateStorageKey)
+  if (!raw) {
+    return defaultState
+  }
+
+  try {
+    const parsed = JSON.parse(raw)
+    const openTabs = Array.isArray(parsed.openTabs)
+      ? parsed.openTabs.filter((id) => isValidSectionId(id))
+      : []
+    const activeSection = isValidSectionId(parsed.activeSection) ? parsed.activeSection : openTabs[0]
+    const normalizedTabs = openTabs.length ? openTabs : ['overview']
+
+    if (activeSection && !normalizedTabs.includes(activeSection)) {
+      normalizedTabs.push(activeSection)
+    }
+
+    return {
+      openTabs: normalizedTabs,
+      activeSection: activeSection || normalizedTabs[0] || null
+    }
+  } catch {
+    return defaultState
+  }
+}
+
+function persistWorkspaceState() {
+  sessionStorage.setItem(
+    workspaceStateStorageKey,
+    JSON.stringify({
+      openTabs: openTabs.value,
+      activeSection: activeSection.value
+    })
+  )
+}
+
+const restoredWorkspaceState = restoreWorkspaceState()
+const sectionSearchKeyword = ref('')
+const sectionSearchInputRef = ref(null)
 const sidebarSections = computed(() => adminSections.filter((section) => section.visibleInSidebar))
-const openTabs = ref(['overview'])
-const activeSection = ref('overview')
+const filteredSidebarSections = computed(() => {
+  const keyword = sectionSearchKeyword.value.trim().toLowerCase()
+  if (!keyword) {
+    return sidebarSections.value
+  }
+
+  return sidebarSections.value.filter((section) => {
+    const searchableText = `${section.label} ${section.hint} ${section.description}`.toLowerCase()
+    return searchableText.includes(keyword)
+  })
+})
+const openTabs = ref(restoredWorkspaceState.openTabs)
+const activeSection = ref(restoredWorkspaceState.activeSection)
 const avatarMenuOpen = ref(false)
+const userDialogOpen = ref(false)
+const ruleDialogOpen = ref(false)
+const itemDialogOpen = ref(false)
 const profileSaveMessage = ref('')
 const profileSaveType = ref('success')
+const userFormErrors = reactive({
+  username: '',
+  nickname: '',
+  password: '',
+  role: ''
+})
+const ruleFormErrors = reactive({
+  name: '',
+  pointsPerAction: '',
+  carbonReductionPerAction: '',
+  dailyLimit: ''
+})
+const itemFormErrors = reactive({
+  name: '',
+  pointsCost: '',
+  stock: ''
+})
 
 const openTabSections = computed(() =>
   openTabs.value
@@ -702,6 +989,9 @@ const activeSectionMeta = computed(
 )
 
 function openSection(sectionId) {
+  if (!isValidSectionId(sectionId)) {
+    return
+  }
   if (!openTabs.value.includes(sectionId)) {
     openTabs.value.push(sectionId)
   }
@@ -729,6 +1019,212 @@ function closeSection(sectionId) {
 function openProfileCenter() {
   openSection('profile')
   avatarMenuOpen.value = false
+}
+
+function openCreateUserDialog() {
+  resetUserForm()
+  clearUserFormErrors()
+  userDialogOpen.value = true
+}
+
+function openEditUserDialog(user) {
+  editUser(user)
+  clearUserFormErrors()
+  userDialogOpen.value = true
+}
+
+function closeUserDialog() {
+  userDialogOpen.value = false
+  clearUserFormErrors()
+  resetUserForm()
+}
+
+async function submitUserDialog() {
+  clearUserFormErrors()
+  if (!validateUserForm()) {
+    return
+  }
+  const ok = await saveUser()
+  if (ok) {
+    userDialogOpen.value = false
+  }
+}
+
+function openCreateRuleDialog() {
+  resetRuleForm()
+  clearRuleFormErrors()
+  ruleDialogOpen.value = true
+}
+
+function openEditRuleDialog(rule) {
+  editRule(rule)
+  clearRuleFormErrors()
+  ruleDialogOpen.value = true
+}
+
+function closeRuleDialog() {
+  ruleDialogOpen.value = false
+  clearRuleFormErrors()
+  resetRuleForm()
+}
+
+async function submitRuleDialog() {
+  clearRuleFormErrors()
+  if (!validateRuleForm()) {
+    return
+  }
+  const ok = await saveRule()
+  if (ok) {
+    ruleDialogOpen.value = false
+  }
+}
+
+function openCreateItemDialog() {
+  resetItemForm()
+  clearItemFormErrors()
+  itemDialogOpen.value = true
+}
+
+function openEditItemDialog(item) {
+  editItem(item)
+  clearItemFormErrors()
+  itemDialogOpen.value = true
+}
+
+function closeItemDialog() {
+  itemDialogOpen.value = false
+  clearItemFormErrors()
+  resetItemForm()
+}
+
+async function submitItemDialog() {
+  clearItemFormErrors()
+  if (!validateItemForm()) {
+    return
+  }
+  const ok = await saveItem()
+  if (ok) {
+    itemDialogOpen.value = false
+  }
+}
+
+function clearErrors(target) {
+  Object.keys(target).forEach((key) => {
+    target[key] = ''
+  })
+}
+
+function clearUserFormErrors() {
+  clearErrors(userFormErrors)
+}
+
+function clearRuleFormErrors() {
+  clearErrors(ruleFormErrors)
+}
+
+function clearItemFormErrors() {
+  clearErrors(itemFormErrors)
+}
+
+function clearUserFieldError(field) {
+  userFormErrors[field] = ''
+}
+
+function clearRuleFieldError(field) {
+  ruleFormErrors[field] = ''
+}
+
+function clearItemFieldError(field) {
+  itemFormErrors[field] = ''
+}
+
+function validateUserForm() {
+  if (!String(userForm.username || '').trim()) {
+    userFormErrors.username = '请输入登录用户名'
+  }
+  if (!String(userForm.nickname || '').trim()) {
+    userFormErrors.nickname = '请输入用户昵称'
+  }
+  if (!String(userForm.role || '').trim()) {
+    userFormErrors.role = '请选择角色'
+  }
+
+  const password = String(userForm.password || '').trim()
+  const isEditing = Boolean(userForm.id)
+  if (!isEditing && !password) {
+    userFormErrors.password = '请输入登录密码'
+  } else if (password && password.length < 6) {
+    userFormErrors.password = '登录密码至少 6 位'
+  }
+
+  return !Object.values(userFormErrors).some(Boolean)
+}
+
+function validateRuleForm() {
+  if (!String(ruleForm.name || '').trim()) {
+    ruleFormErrors.name = '请输入规则名称'
+  }
+
+  const pointsPerAction = Number(ruleForm.pointsPerAction)
+  if (!Number.isFinite(pointsPerAction) || pointsPerAction < 0) {
+    ruleFormErrors.pointsPerAction = '积分需为大于等于 0 的数字'
+  }
+
+  const carbonReductionPerAction = Number(ruleForm.carbonReductionPerAction)
+  if (!Number.isFinite(carbonReductionPerAction) || carbonReductionPerAction < 0) {
+    ruleFormErrors.carbonReductionPerAction = '减碳量需为大于等于 0 的数字'
+  }
+
+  const dailyLimit = Number(ruleForm.dailyLimit)
+  if (!Number.isInteger(dailyLimit) || dailyLimit <= 0) {
+    ruleFormErrors.dailyLimit = '每日上报上限需为正整数'
+  }
+
+  return !Object.values(ruleFormErrors).some(Boolean)
+}
+
+function validateItemForm() {
+  if (!String(itemForm.name || '').trim()) {
+    itemFormErrors.name = '请输入商品名称'
+  }
+
+  const pointsCost = Number(itemForm.pointsCost)
+  if (!Number.isFinite(pointsCost) || pointsCost <= 0) {
+    itemFormErrors.pointsCost = '积分单价需为大于 0 的数字'
+  }
+
+  const stock = Number(itemForm.stock)
+  if (!Number.isInteger(stock) || stock < 0) {
+    itemFormErrors.stock = '库存需为大于等于 0 的整数'
+  }
+
+  return !Object.values(itemFormErrors).some(Boolean)
+}
+
+function clearSectionSearch() {
+  sectionSearchKeyword.value = ''
+}
+
+function openFirstMatchedSection() {
+  const firstMatch = filteredSidebarSections.value[0]
+  if (firstMatch) {
+    openSection(firstMatch.id)
+  }
+}
+
+function focusSectionSearch() {
+  if (!sectionSearchInputRef.value) {
+    return
+  }
+  sectionSearchInputRef.value.focus()
+  sectionSearchInputRef.value.select()
+}
+
+function handleWorkspaceShortcut(event) {
+  if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === 'k') {
+    event.preventDefault()
+    focusSectionSearch()
+  }
 }
 
 async function saveProfile() {
@@ -760,6 +1256,8 @@ async function saveProfile() {
 
 const {
   message,
+  messageType,
+  clearMessage,
   profile,
   dashboard,
   users,
@@ -788,6 +1286,7 @@ const {
   deleteItem,
   updateOrder,
   badgeClass,
+  formatStatusLabel,
   fmt,
   resolveImageUrl,
   openImage,
@@ -862,6 +1361,65 @@ watch(
 const avatarInitials = computed(() => {
   const text = String(profileCenterForm.name || 'AD').trim()
   return text.slice(0, 2).toUpperCase()
+})
+
+const usersPageSize = 5
+const rulesPageSize = 5
+const pendingReportsPageSize = 5
+const itemsPageSize = 5
+const ordersPageSize = 5
+
+const usersPage = ref(1)
+const rulesPage = ref(1)
+const pendingReportsPage = ref(1)
+const itemsPage = ref(1)
+const ordersPage = ref(1)
+
+function clampPage(pageRef, totalItems, pageSize) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  if (pageRef.value > totalPages) {
+    pageRef.value = totalPages
+  }
+}
+
+const pagedUsers = computed(() => {
+  const start = (usersPage.value - 1) * usersPageSize
+  return users.value.slice(start, start + usersPageSize)
+})
+
+const pagedRules = computed(() => {
+  const start = (rulesPage.value - 1) * rulesPageSize
+  return rules.value.slice(start, start + rulesPageSize)
+})
+
+const pagedPendingReports = computed(() => {
+  const start = (pendingReportsPage.value - 1) * pendingReportsPageSize
+  return pendingReports.value.slice(start, start + pendingReportsPageSize)
+})
+
+const pagedItems = computed(() => {
+  const start = (itemsPage.value - 1) * itemsPageSize
+  return items.value.slice(start, start + itemsPageSize)
+})
+
+const pagedOrders = computed(() => {
+  const start = (ordersPage.value - 1) * ordersPageSize
+  return orders.value.slice(start, start + ordersPageSize)
+})
+
+watch(() => users.value.length, (value) => clampPage(usersPage, value, usersPageSize), { immediate: true })
+watch(() => rules.value.length, (value) => clampPage(rulesPage, value, rulesPageSize), { immediate: true })
+watch(() => pendingReports.value.length, (value) => clampPage(pendingReportsPage, value, pendingReportsPageSize), { immediate: true })
+watch(() => items.value.length, (value) => clampPage(itemsPage, value, itemsPageSize), { immediate: true })
+watch(() => orders.value.length, (value) => clampPage(ordersPage, value, ordersPageSize), { immediate: true })
+watch([openTabs, activeSection], persistWorkspaceState, { deep: true })
+
+onMounted(() => {
+  window.addEventListener('keydown', handleWorkspaceShortcut)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleWorkspaceShortcut)
 })
 </script>
 

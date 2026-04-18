@@ -2,3 +2,225 @@
   min-height: 34px;
   padding-inline: 12px;
 }
+
+.admin-order-locked {
+  color: #8a9a92;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-items-summary {
+  gap: 12px;
+}
+
+.action-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 220;
+  width: min(520px, calc(100vw - 28px));
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 14px 12px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  box-shadow: 0 18px 36px rgba(26, 50, 40, 0.24);
+  backdrop-filter: blur(6px);
+  animation: toast-enter-center 0.22s ease-out;
+}
+
+.action-toast.is-success {
+  color: #0f5d3d;
+  background: linear-gradient(140deg, rgba(243, 255, 248, 0.98), rgba(224, 250, 235, 0.98));
+  border-color: rgba(24, 128, 80, 0.35);
+}
+
+.action-toast.is-error {
+  color: #8f2a24;
+  background: linear-gradient(140deg, rgba(255, 246, 245, 0.99), rgba(255, 231, 228, 0.98));
+  border-color: rgba(183, 62, 53, 0.35);
+}
+
+.action-toast-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.action-toast.is-success .action-toast-icon {
+  background: rgba(22, 138, 85, 0.16);
+}
+
+.action-toast.is-error .action-toast-icon {
+  background: rgba(191, 65, 54, 0.15);
+}
+
+.action-toast-body {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.action-toast-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.action-toast-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.action-toast-progress {
+  display: block;
+  margin-top: 2px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(23, 53, 45, 0.1);
+  overflow: hidden;
+}
+
+.action-toast-progress::after {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: left center;
+  animation: toast-progress var(--toast-duration, 4s) linear forwards;
+}
+
+.action-toast.is-success .action-toast-progress::after {
+  background: rgba(24, 128, 80, 0.62);
+}
+
+.action-toast.is-error .action-toast-progress::after {
+  background: rgba(183, 62, 53, 0.62);
+}
+
+.action-toast-close {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(23, 53, 45, 0.16);
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.action-toast-close:hover {
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
+}
+
+@keyframes toast-enter-center {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes toast-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.workspace-modal-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(19, 38, 32, 0.32);
+  backdrop-filter: blur(3px);
+}
+
+.workspace-modal-card {
+  width: min(760px, 100%);
+  border-radius: 24px;
+  border: 1px solid rgba(23, 53, 45, 0.12);
+  background: rgba(255, 253, 247, 0.98);
+  box-shadow: 0 26px 60px rgba(26, 50, 40, 0.2);
+  overflow: hidden;
+}
+
+.workspace-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid rgba(23, 53, 45, 0.1);
+}
+
+.workspace-modal-head h3 {
+  margin: 8px 0 0;
+  font-size: 1.35rem;
+}
+
+.workspace-modal-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(23, 53, 45, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 253, 247, 0.96);
+  color: #5d6f66;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.workspace-modal-body {
+  display: grid;
+  gap: 14px;
+  padding: 18px 22px;
+}
+
+.workspace-modal-actions {
+  justify-content: flex-end;
+  padding: 0 22px 22px;
+}
+
+.field-error-text {
+  color: #b53d37;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.input.has-error,
+.select.has-error,
+.textarea.has-error {
+  border-color: rgba(181, 61, 55, 0.48);
+  box-shadow: 0 0 0 4px rgba(181, 61, 55, 0.12);
+}
+
+@media (max-width: 640px) {
+  .action-toast {
+    width: min(92vw, 520px);
+  }
+}

@@ -244,6 +244,12 @@ a {
   border-bottom: none;
 }
 
+.workspace-table-empty {
+  color: var(--text-subtle);
+  text-align: center !important;
+  padding: 32px 16px !important;
+}
+
 .media-thumb {
   width: 56px;
   height: 56px;
@@ -371,6 +377,15 @@ a {
   margin-top: 4px;
   color: var(--text-subtle);
   font-size: 12px;
+}
+
+.workspace-nav-empty {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px dashed rgba(29, 122, 82, 0.2);
+  color: var(--text-subtle);
+  font-size: 12px;
+  text-align: center;
 }
 
 .workspace-footer {
@@ -581,16 +596,38 @@ a {
   align-items: center;
   gap: 10px;
   min-width: 240px;
-  padding: 10px 14px;
+  padding: 8px 10px;
   border: 1px solid var(--line-soft);
   border-radius: 16px;
   background: rgba(255, 253, 247, 0.96);
-  color: var(--text-subtle);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.workspace-search:focus-within {
+  border-color: rgba(29, 122, 82, 0.3);
+  box-shadow: 0 0 0 4px rgba(29, 122, 82, 0.08);
+}
+
+.workspace-search-input {
+  width: 100%;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
   font-size: 13px;
+}
+
+.workspace-search-input::placeholder {
+  color: var(--text-subtle);
+}
+
+.workspace-search-input:focus {
+  outline: none;
 }
 
 .workspace-search kbd {
   margin-left: auto;
+  flex-shrink: 0;
   padding: 3px 7px;
   border-radius: 8px;
   background: var(--bg-soft);
@@ -1145,6 +1182,10 @@ a {
 
   .workspace-title {
     font-size: 1.8rem;
+  }
+
+  .workspace-search kbd {
+    display: none;
   }
 
   .btn {

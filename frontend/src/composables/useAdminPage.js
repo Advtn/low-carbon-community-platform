@@ -1,4 +1,4 @@
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   apiOrigin,
@@ -16,12 +16,14 @@ import {
   updateRule,
   updateUser
 } from '../services/adminService'
-import { badgeClass, fmt, resolveImageUrl } from '../utils/adminViewUtils'
+import { badgeClass, fmt, formatStatusLabel, resolveImageUrl } from '../utils/adminViewUtils'
 
 export function useAdminPage() {
   const router = useRouter()
+  let messageTimer = null
 
   const message = ref('')
+  const messageType = ref('error')
   const profile = ref({})
   const dashboard = ref({
     residentCount: 0,
@@ -76,10 +78,40 @@ export function useAdminPage() {
     items.value.reduce((sum, item) => sum + Number(item.stock || 0), 0)
   )
 
-  onMounted(loadAll)
+  function clearMessageTimer() {
+    if (messageTimer !== null) {
+      clearTimeout(messageTimer)
+      messageTimer = null
+    }
+  }
 
-  async function loadAll() {
+  function setMessage(text, type = 'error') {
+    clearMessageTimer()
+    message.value = text
+    messageType.value = type
+    if (!text) return
+
+    const duration = type === 'success' ? 3600 : 5000
+    messageTimer = setTimeout(() => {
+      clearMessage()
+    }, duration)
+  }
+
+  function clearMessage() {
+    clearMessageTimer()
     message.value = ''
+    messageType.value = 'error'
+  }
+
+  onMounted(loadAll)
+  onBeforeUnmount(clearMessageTimer)
+
+  async function loadAll(options = {}) {
+    const { keepMessage = false } = options
+    if (!keepMessage) {
+      clearMessage()
+    }
+
     try {
       const data = await fetchAdminData()
       profile.value = data.profile || profile.value
@@ -89,22 +121,31 @@ export function useAdminPage() {
       pendingReports.value = data.pendingReports
       items.value = data.items
       orders.value = data.orders
+      return true
     } catch (e) {
-      message.value = e.message
+      setMessage(e.message)
+      return false
     }
   }
 
   async function saveUser() {
+    const isEditing = Boolean(userForm.id)
     try {
-      if (userForm.id) {
+      if (isEditing) {
         await updateUser(userForm.id, userForm)
       } else {
         await createUser(userForm)
       }
       resetUserForm()
-      await loadAll()
+      const ok = await loadAll({ keepMessage: true })
+      if (ok) {
+        setMessage(isEditing ? '用户更新成功' : '用户新增成功', 'success')
+        return true
+      }
+      return false
     } catch (e) {
-      message.value = e.message
+      setMessage(e.message)
+      return false
     }
   }
 
@@ -132,23 +173,33 @@ export function useAdminPage() {
     if (!window.confirm('\u786e\u8ba4\u5220\u9664\u8be5\u7528\u6237\uff1f')) return
     try {
       await deleteUserById(id)
-      await loadAll()
+      const ok = await loadAll({ keepMessage: true })
+      if (ok) {
+        setMessage('用户删除成功', 'success')
+      }
     } catch (e) {
-      message.value = e.message
+      setMessage(e.message)
     }
   }
 
   async function saveRule() {
+    const isEditing = Boolean(ruleForm.id)
     try {
-      if (ruleForm.id) {
+      if (isEditing) {
         await updateRule(ruleForm.id, ruleForm)
       } else {
         await createRule(ruleForm)
       }
       resetRuleForm()
-      await loadAll()
+      const ok = await loadAll({ keepMessage: true })
+      if (ok) {
+        setMessage(isEditing ? '规则更新成功' : '规则新增成功', 'success')
+        return true
+      }
+      return false
     } catch (e) {
-      message.value = e.message
+      setMessage(e.message)
+      return false
     }
   }
 
@@ -180,9 +231,12 @@ export function useAdminPage() {
     if (!window.confirm('\u786e\u8ba4\u5220\u9664\u8be5\u89c4\u5219\uff1f')) return
     try {
       await deleteRuleById(id)
-      await loadAll()
+      const ok = await loadAll({ keepMessage: true })
+      if (ok) {
+        setMessage('规则删除成功', 'success')
+      }
     } catch (e) {
-      message.value = e.message
+      setMessage(e.message)
     }
   }
 
@@ -200,23 +254,33 @@ export function useAdminPage() {
         remark = input.trim() || '\u5ba1\u6838\u9a73\u56de'
       }
       await auditReport(id, { approved, remark })
-      await loadAll()
+      const ok = await loadAll({ keepMessage: true })
+      if (ok) {
+        setMessage(approved ? '审核通过成功' : '审核驳回成功', 'success')
+      }
     } catch (e) {
-      message.value = e.message
+      setMessage(e.message)
     }
   }
 
   async function saveItem() {
+    const isEditing = Boolean(itemForm.id)
     try {
-      if (itemForm.id) {
+      if (isEditing) {
         await updateItem(itemForm.id, itemForm)
       } else {
         await createItem(itemForm)
       }
       resetItemForm()
-      await loadAll()
+      const ok = await loadAll({ keepMessage: true })
+      if (ok) {
+        setMessage(isEditing ? '商品更新成功' : '商品新增成功', 'success')
+        return true
+      }
+      return false
     } catch (e) {
-      message.value = e.message
+      setMessage(e.message)
+      return false
     }
   }
 
@@ -246,22 +310,37 @@ export function useAdminPage() {
     if (!window.confirm('\u786e\u8ba4\u5220\u9664\u8be5\u5546\u54c1\uff1f')) return
     try {
       await deleteItemById(id)
-      await loadAll()
+      const ok = await loadAll({ keepMessage: true })
+      if (ok) {
+        setMessage('商品删除成功', 'success')
+      }
     } catch (e) {
-      message.value = e.message
+      setMessage(e.message)
     }
   }
 
   async function updateOrder(id, status) {
+    const targetOrder = orders.value.find((order) => Number(order.id) === Number(id))
+    if (targetOrder && targetOrder.status !== 'PENDING') {
+      setMessage('订单已结束，无法再次修改状态')
+      return
+    }
+
     try {
       const remark =
         status === 'COMPLETED'
           ? '\u5df2\u53d1\u653e'
           : '\u7ba1\u7406\u5458\u53d6\u6d88\u8ba2\u5355'
       await updateOrderStatus(id, { status, remark })
-      await loadAll()
+      const ok = await loadAll({ keepMessage: true })
+      if (ok) {
+        setMessage(
+          status === 'COMPLETED' ? '订单已标记为完成' : '订单已取消并完成退款',
+          'success'
+        )
+      }
     } catch (e) {
-      message.value = e.message
+      setMessage(e.message)
     }
   }
 
@@ -288,6 +367,8 @@ export function useAdminPage() {
 
   return {
     message,
+    messageType,
+    clearMessage,
     profile,
     dashboard,
     users,
@@ -316,6 +397,7 @@ export function useAdminPage() {
     deleteItem,
     updateOrder,
     badgeClass,
+    formatStatusLabel,
     fmt,
     resolveImageUrl: resolveAdminImageUrl,
     openImage,

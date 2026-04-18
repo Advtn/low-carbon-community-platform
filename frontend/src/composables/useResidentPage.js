@@ -16,6 +16,7 @@ import {
 import {
   badgeClass,
   fmt,
+  formatStatusLabel,
   formatLedgerType,
   isToday,
   resolveImageUrl
@@ -38,10 +39,14 @@ const ROUTE_PROFILES = {
 export function useResidentPage() {
   const router = useRouter()
   const user = JSON.parse(sessionStorage.getItem('user') || '{}')
+  let reportMessageTimer = null
+  let redeemMessageTimer = null
 
   const message = ref('')
   const reportMessage = ref('')
   const reportMessageType = ref('error')
+  const redeemMessage = ref('')
+  const redeemMessageType = ref('error')
   const profile = reactive({})
   const rules = ref([])
   const reports = ref([])
@@ -155,6 +160,8 @@ export function useResidentPage() {
     loadAll()
   })
   onBeforeUnmount(() => {
+    clearReportMessageTimer()
+    clearRedeemMessageTimer()
     destroyMap()
   })
 
@@ -185,8 +192,13 @@ export function useResidentPage() {
     }
   )
 
-  async function loadAll() {
+  async function loadAll(options = {}) {
+    const { keepFeedback = false } = options
     message.value = ''
+    if (!keepFeedback) {
+      clearReportMessage()
+      clearRedeemMessage()
+    }
     try {
       const data = await fetchResidentData()
       Object.assign(profile, data.profile)
@@ -202,13 +214,51 @@ export function useResidentPage() {
   }
 
   function setReportMessage(text, type = 'error') {
+    clearReportMessageTimer()
     reportMessage.value = text
     reportMessageType.value = type
+    if (!text) return
+    const duration = type === 'success' ? 3600 : 5000
+    reportMessageTimer = setTimeout(() => {
+      clearReportMessage()
+    }, duration)
   }
 
   function clearReportMessage() {
+    clearReportMessageTimer()
     reportMessage.value = ''
     reportMessageType.value = 'error'
+  }
+
+  function clearReportMessageTimer() {
+    if (reportMessageTimer !== null) {
+      clearTimeout(reportMessageTimer)
+      reportMessageTimer = null
+    }
+  }
+
+  function setRedeemMessage(text, type = 'error') {
+    clearRedeemMessageTimer()
+    redeemMessage.value = text
+    redeemMessageType.value = type
+    if (!text) return
+    const duration = type === 'success' ? 3600 : 5000
+    redeemMessageTimer = setTimeout(() => {
+      clearRedeemMessage()
+    }, duration)
+  }
+
+  function clearRedeemMessage() {
+    clearRedeemMessageTimer()
+    redeemMessage.value = ''
+    redeemMessageType.value = 'error'
+  }
+
+  function clearRedeemMessageTimer() {
+    if (redeemMessageTimer !== null) {
+      clearTimeout(redeemMessageTimer)
+      redeemMessageTimer = null
+    }
   }
 
   async function submitReport() {
@@ -262,7 +312,7 @@ export function useResidentPage() {
         proofImageUrl: reportForm.proofImageUrl
       })
       resetReportForm()
-      await loadAll()
+      await loadAll({ keepFeedback: true })
       setReportMessage('\u63d0\u4ea4\u6210\u529f\uff0c\u8bf7\u7b49\u5f85\u7ba1\u7406\u5458\u5ba1\u6838', 'success')
     } catch (e) {
       setReportMessage(e.message || '\u4e0a\u62a5\u5931\u8d25')
@@ -371,6 +421,9 @@ export function useResidentPage() {
   }
 
   async function redeem(item) {
+    message.value = ''
+    clearRedeemMessage()
+
     const input = window.prompt(
       `\u5151\u6362 ${item.name}\uff0c\u8bf7\u8f93\u5165\u6570\u91cf`,
       '1'
@@ -379,15 +432,16 @@ export function useResidentPage() {
 
     const quantity = Number(input)
     if (!Number.isInteger(quantity) || quantity <= 0) {
-      message.value = '\u6570\u91cf\u5fc5\u987b\u4e3a\u6b63\u6574\u6570'
+      setRedeemMessage('\u6570\u91cf\u5fc5\u987b\u4e3a\u6b63\u6574\u6570')
       return
     }
 
     try {
       await redeemItem({ itemId: item.id, quantity })
-      await loadAll()
+      await loadAll({ keepFeedback: true })
+      setRedeemMessage(`\u5151\u6362\u6210\u529f\uff1a${item.name} x ${quantity}\uff0c\u8bf7\u5728\u300c\u5151\u6362\u8ba2\u5355\u300d\u67e5\u770b\u8fdb\u5ea6`, 'success')
     } catch (e) {
-      message.value = e.message
+      setRedeemMessage(e.message || '\u5151\u6362\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5')
     }
   }
 
@@ -607,6 +661,8 @@ export function useResidentPage() {
     message,
     reportMessage,
     reportMessageType,
+    redeemMessage,
+    redeemMessageType,
     profile,
     rules,
     reports,
@@ -651,6 +707,7 @@ export function useResidentPage() {
     resolveImageUrl: resolveResidentImageUrl,
     openImage,
     badgeClass,
+    formatStatusLabel,
     formatLedgerType,
     fmt,
     logout

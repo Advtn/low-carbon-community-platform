@@ -4,6 +4,17 @@ export function badgeClass(status) {
   return 'badge err'
 }
 
+export function formatStatusLabel(status) {
+  const map = {
+    PENDING: '待处理',
+    APPROVED: '已通过',
+    REJECTED: '已驳回',
+    COMPLETED: '已完成',
+    CANCELLED: '已取消'
+  }
+  return map[status] || status || '-'
+}
+
 export function fmt(v) {
   if (!v) return '-'
   return String(v).replace('T', ' ').slice(0, 19)

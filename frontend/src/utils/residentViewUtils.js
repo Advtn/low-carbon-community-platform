@@ -38,6 +38,17 @@ export function badgeClass(status) {
   return 'badge err'
 }
 
+export function formatStatusLabel(status) {
+  const map = {
+    PENDING: '待处理',
+    APPROVED: '已通过',
+    REJECTED: '已驳回',
+    COMPLETED: '已完成',
+    CANCELLED: '已取消'
+  }
+  return map[status] || status || '-'
+}
+
 export function formatLedgerType(type) {
   const map = {
     REPORT_REWARD: '\u884c\u4e3a\u5956\u52b1',
