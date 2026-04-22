@@ -917,6 +917,8 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useAdminPage } from '../composables/useAdminPage'
 import { updateAdminProfile, uploadImage } from '../services/adminService'
 import AppPagination from '../components/AppPagination.vue'
+import adminSections from '../constants/adminSections'
+import { isValidSectionId, persistWorkspaceState, restoreWorkspaceState } from '../utils/workspaceState'
 
 const defaultProfileAvatarUrl = `data:image/svg+xml;utf8,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#9cc9b2"/><stop offset="1" stop-color="#e0c39f"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#g)"/><circle cx="64" cy="50" r="22" fill="#f7f5ef"/><path d="M24 118c4-22 19-34 40-34s36 12 40 34" fill="#f7f5ef"/></svg>`
@@ -943,64 +945,11 @@ function writeCachedAvatarUrl(url) {
   }
 }
 
-const adminSections = [
-  { id: 'overview', short: '总', label: '总览', hint: '今日运营概况', description: '先看今天的社区脉搏、库存情况和待办任务。', visibleInSidebar: true },
-  { id: 'users', short: '户', label: '用户管理', hint: '居民与管理员账号', description: '创建与维护居民、管理员账号及其角色信息。', visibleInSidebar: true },
-  { id: 'rules', short: '规', label: '规则管理', hint: '积分与减碳口径', description: '配置行为规则、积分值、减碳量与日上限。', visibleInSidebar: true },
-  { id: 'audits', short: '审', label: '审核工作台', hint: '待审核上报', description: '集中处理居民行为上报，完成通过或驳回。', visibleInSidebar: true },
-  { id: 'items', short: '商', label: '商品管理', hint: '积分商城库存', description: '维护商品信息、库存数量与上下架状态。', visibleInSidebar: true },
-  { id: 'orders', short: '单', label: '订单管理', hint: '履约与退款', description: '处理兑换订单状态，完成履约或取消退款。', visibleInSidebar: true },
-  { id: 'profile', short: '我', label: '个人中心', hint: '查看与编辑资料', description: '集中查看并维护你的基础资料、岗位信息与个人介绍。', visibleInSidebar: false }
-]
-
 const workspaceStateStorageKey = 'lowcarbon:admin-workspace:v1'
-
-function isValidSectionId(sectionId) {
-  return adminSections.some((section) => section.id === sectionId)
-}
-
-function restoreWorkspaceState() {
-  const defaultState = {
-    openTabs: ['overview'],
-    activeSection: 'overview'
-  }
-  const raw = sessionStorage.getItem(workspaceStateStorageKey)
-  if (!raw) {
-    return defaultState
-  }
-
-  try {
-    const parsed = JSON.parse(raw)
-    const openTabs = Array.isArray(parsed.openTabs)
-      ? parsed.openTabs.filter((id) => isValidSectionId(id))
-      : []
-    const activeSection = isValidSectionId(parsed.activeSection) ? parsed.activeSection : openTabs[0]
-    const normalizedTabs = openTabs.length ? openTabs : ['overview']
-
-    if (activeSection && !normalizedTabs.includes(activeSection)) {
-      normalizedTabs.push(activeSection)
-    }
-
-    return {
-      openTabs: normalizedTabs,
-      activeSection: activeSection || normalizedTabs[0] || null
-    }
-  } catch {
-    return defaultState
-  }
-}
-
-function persistWorkspaceState() {
-  sessionStorage.setItem(
-    workspaceStateStorageKey,
-    JSON.stringify({
-      openTabs: openTabs.value,
-      activeSection: activeSection.value
-    })
-  )
-}
-
-const restoredWorkspaceState = restoreWorkspaceState()
+const restoredWorkspaceState = restoreWorkspaceState({
+  storageKey: workspaceStateStorageKey,
+  sections: adminSections
+})
 const sectionSearchKeyword = ref('')
 const sectionSearchInputRef = ref(null)
 const sidebarSections = computed(() => adminSections.filter((section) => section.visibleInSidebar))
@@ -1056,7 +1005,7 @@ const activeSectionMeta = computed(
 )
 
 function openSection(sectionId) {
-  if (!isValidSectionId(sectionId)) {
+  if (!isValidSectionId(adminSections, sectionId)) {
     return
   }
   if (!openTabs.value.includes(sectionId)) {
@@ -1547,7 +1496,17 @@ watch(() => rules.value.length, (value) => clampPage(rulesPage, value, rulesPage
 watch(() => pendingReports.value.length, (value) => clampPage(pendingReportsPage, value, pendingReportsPageSize), { immediate: true })
 watch(() => items.value.length, (value) => clampPage(itemsPage, value, itemsPageSize), { immediate: true })
 watch(() => orders.value.length, (value) => clampPage(ordersPage, value, ordersPageSize), { immediate: true })
-watch([openTabs, activeSection], persistWorkspaceState, { deep: true })
+watch(
+  [openTabs, activeSection],
+  () => {
+    persistWorkspaceState({
+      storageKey: workspaceStateStorageKey,
+      openTabs: openTabs.value,
+      activeSection: activeSection.value
+    })
+  },
+  { deep: true }
+)
 
 onMounted(() => {
   window.addEventListener('keydown', handleWorkspaceShortcut)
