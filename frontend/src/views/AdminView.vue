@@ -702,162 +702,33 @@
             />
           </section>
 
-    <section v-if="activeSection === 'profile'" class="workspace-pane">
-            <div class="pane-head">
-              <div>
-                <span class="workspace-kicker">Profile</span>
-                <h2>个人中心</h2>
-                <p>集中查看并维护你的基础资料、岗位信息与个人介绍。</p>
-              </div>
-              <button class="btn" @click="saveProfile">保存资料</button>
-            </div>
-
-            <div v-if="profileSaveMessage" class="inline-message" :class="profileSaveType === 'success' ? 'success' : 'error'">
-              {{ profileSaveMessage }}
-            </div>
-
-            <div class="profile-center">
-              <section class="profile-card">
-                <div class="profile-cover"></div>
-                <div class="profile-body">
-                  <div class="profile-avatar-wrap">
-                    <div class="profile-avatar profile-avatar-photo">
-                      <img :src="profileAvatarUrl" alt="个人头像" />
-                    </div>
-                    <div class="profile-avatar-upload">
-                      <input
-                        ref="profileAvatarInputRef"
-                        class="profile-avatar-input"
-                        type="file"
-                        accept="image/*"
-                        @change="onProfileAvatarChange"
-                      />
-                      <button
-                        class="btn ghost profile-avatar-btn"
-                        type="button"
-                        :disabled="profileAvatarUploading"
-                        @click="triggerProfileAvatarUpload"
-                      >
-                        {{ profileAvatarUploading ? '上传中...' : '上传头像' }}
-                      </button>
-                    </div>
-                  </div>
-                  <h3 class="profile-name">{{ profileCenterForm.name }}</h3>
-                  <p class="profile-desc">{{ profileCenterForm.bio }}</p>
-
-                  <div class="profile-list">
-                    <div class="profile-list-item">
-                      <span>邮</span>
-                      <strong>{{ profileCenterForm.email }}</strong>
-                    </div>
-                    <div class="profile-list-item">
-                      <span>岗</span>
-                      <strong>{{ profileCenterForm.role }}</strong>
-                    </div>
-                    <div class="profile-list-item">
-                      <span>城</span>
-                      <strong>{{ profileCenterForm.city }}</strong>
-                    </div>
-                    <div class="profile-list-item">
-                      <span>组</span>
-                      <strong>{{ profileCenterForm.organization }}</strong>
-                    </div>
-                  </div>
-
-                  <div class="profile-tags">
-                    <span v-for="tag in profileCenterForm.tags" :key="tag" class="profile-tag">{{ tag }}</span>
-                  </div>
-                </div>
-              </section>
-
-              <section class="profile-panel">
-                <div class="profile-panel-head">
-                  <h3>基本设置</h3>
-                </div>
-                <div class="profile-panel-body">
-                  <div class="workspace-form">
-                    <div class="workspace-form-grid">
-                      <label class="field">
-                        <span class="field-label">姓名</span>
-                        <input v-model="profileCenterForm.name" class="input" />
-                      </label>
-                      <label class="field">
-                        <span class="field-label">性别</span>
-                        <select v-model="profileCenterForm.gender" class="select">
-                          <option value="女">女</option>
-                          <option value="男">男</option>
-                          <option value="保密">保密</option>
-                        </select>
-                      </label>
-                    </div>
-
-                    <div class="workspace-form-grid">
-                      <label class="field">
-                        <span class="field-label">昵称</span>
-                        <input v-model="profileCenterForm.nickname" class="input" />
-                      </label>
-                      <label class="field">
-                        <span class="field-label">邮箱</span>
-                        <input v-model="profileCenterForm.email" class="input" />
-                      </label>
-                    </div>
-
-                    <div class="workspace-form-grid">
-                      <label class="field">
-                        <span class="field-label">手机</span>
-                        <input v-model="profileCenterForm.phone" class="input" />
-                      </label>
-                      <label class="field">
-                        <span class="field-label">地址</span>
-                        <input v-model="profileCenterForm.address" class="input" />
-                      </label>
-                    </div>
-
-                    <label class="field">
-                      <span class="field-label">个人介绍</span>
-                      <textarea v-model="profileCenterForm.bio" class="textarea"></textarea>
-                    </label>
-                  </div>
-                </div>
-              </section>
-            </div>
-    </section>
+    <ProfileCenterPanel
+      v-if="activeSection === 'profile'"
+      description-text="集中查看并维护你的基础资料、岗位信息与个人介绍。"
+      :form="profileCenterForm"
+      :avatar-url="profileAvatarUrl"
+      :save-message="profileSaveMessage"
+      :save-type="profileSaveType"
+      :avatar-uploading="profileAvatarUploading"
+      :set-avatar-input-ref="setProfileAvatarInput"
+      role-meta-mark="岗"
+      @save="saveProfile"
+      @trigger-avatar-upload="triggerProfileAvatarUpload"
+      @avatar-change="onProfileAvatarChange"
+    />
   </WorkspaceShell>
 </template>
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { useAdminPage } from '../composables/useAdminPage'
+import { useProfileCenter } from '../composables/shared/useProfileCenter'
 import { useWorkspaceState } from '../composables/workspace/useWorkspaceState'
 import { updateAdminProfile, uploadImage } from '../services/adminService'
 import AppPagination from '../components/AppPagination.vue'
+import ProfileCenterPanel from '../components/profile/ProfileCenterPanel.vue'
 import WorkspaceShell from '../components/workspace/WorkspaceShell.vue'
 import adminSections from '../constants/adminSections'
-
-const defaultProfileAvatarUrl = `data:image/svg+xml;utf8,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#9cc9b2"/><stop offset="1" stop-color="#e0c39f"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#g)"/><circle cx="64" cy="50" r="22" fill="#f7f5ef"/><path d="M24 118c4-22 19-34 40-34s36 12 40 34" fill="#f7f5ef"/></svg>`
-)}`
-const profileAvatarStorageKey = 'lowcarbon:admin-avatar:v1'
-
-function readCachedAvatarUrl() {
-  try {
-    return localStorage.getItem(profileAvatarStorageKey) || ''
-  } catch {
-    return ''
-  }
-}
-
-function writeCachedAvatarUrl(url) {
-  try {
-    if (url) {
-      localStorage.setItem(profileAvatarStorageKey, url)
-      return
-    }
-    localStorage.removeItem(profileAvatarStorageKey)
-  } catch {
-    // Ignore storage failures.
-  }
-}
 
 const workspaceStateStorageKey = 'lowcarbon:admin-workspace:v1'
 const {
@@ -882,10 +753,6 @@ const ruleDialogOpen = ref(false)
 const itemDialogOpen = ref(false)
 const successDialogVisible = ref(false)
 const successDialogMessage = ref('')
-const profileSaveMessage = ref('')
-const profileSaveType = ref('success')
-const profileAvatarInputRef = ref(null)
-const profileAvatarUploading = ref(false)
 const userFormErrors = reactive({
   username: '',
   nickname: '',
@@ -1093,83 +960,6 @@ function validateItemForm() {
   return !Object.values(itemFormErrors).some(Boolean)
 }
 
-function triggerProfileAvatarUpload() {
-  if (profileAvatarUploading.value) return
-  profileAvatarInputRef.value?.click()
-}
-
-async function onProfileAvatarChange(event) {
-  const file = event?.target?.files?.[0]
-  if (event?.target) {
-    event.target.value = ''
-  }
-  if (!file) return
-
-  if (!String(file.type || '').startsWith('image/')) {
-    profileSaveType.value = 'error'
-    profileSaveMessage.value = '请选择图片文件'
-    return
-  }
-  if (Number(file.size || 0) > 5 * 1024 * 1024) {
-    profileSaveType.value = 'error'
-    profileSaveMessage.value = '头像文件不能超过 5MB'
-    return
-  }
-
-  profileAvatarUploading.value = true
-  profileSaveMessage.value = ''
-  try {
-    const { data } = await uploadImage(file)
-    const avatarUrl = data?.url || data?.path || ''
-    if (!avatarUrl) {
-      throw new Error('头像地址为空')
-    }
-    profileCenterForm.avatarUrl = avatarUrl
-    if (profile.value) {
-      profile.value.avatarUrl = avatarUrl
-      profile.value.avatar = avatarUrl
-    }
-    writeCachedAvatarUrl(avatarUrl)
-    profileSaveType.value = 'success'
-    profileSaveMessage.value = '头像上传成功，请点击“保存资料”持久化'
-  } catch (error) {
-    profileSaveType.value = 'error'
-    profileSaveMessage.value = error.message || '头像上传失败，请稍后重试'
-  } finally {
-    profileAvatarUploading.value = false
-  }
-}
-
-async function saveProfile() {
-  profileSaveMessage.value = ''
-  try {
-    const { data } = await updateAdminProfile({
-      fullName: profileCenterForm.name,
-      nickname: profileCenterForm.nickname,
-      gender: profileCenterForm.gender,
-      email: profileCenterForm.email,
-      phone: profileCenterForm.phone,
-      address: profileCenterForm.address,
-      bio: profileCenterForm.bio,
-      city: profileCenterForm.city,
-      organization: profileCenterForm.organization,
-      tags: profileCenterForm.tags.join(','),
-      avatarUrl: profileCenterForm.avatarUrl,
-      avatar: profileCenterForm.avatarUrl
-    })
-
-    syncProfileCenterForm(data)
-    profile.value = data
-    writeCachedAvatarUrl(data.avatarUrl || data.avatar || profileCenterForm.avatarUrl || '')
-    updateSessionUser({ nickname: data.nickname, avatarUrl: data.avatarUrl || data.avatar || profileCenterForm.avatarUrl })
-    profileSaveType.value = 'success'
-    profileSaveMessage.value = '个人资料已保存'
-  } catch (error) {
-    profileSaveType.value = 'error'
-    profileSaveMessage.value = error.message || '保存失败，请稍后重试'
-  }
-}
-
 const {
   message,
   messageType,
@@ -1209,74 +999,6 @@ const {
   logout
 } = useAdminPage()
 
-const profileCenterForm = reactive({
-  name: '社区管理员',
-  gender: '保密',
-  nickname: '运营管理员',
-  email: 'admin@lowcarbon.local',
-  phone: '13800009999',
-  address: '广东省深圳市南山区低碳社区运营中心',
-  bio: '负责社区低碳积分平台的规则配置、审核治理、商城履约与整体运营推进。',
-  role: '社区运营管理员',
-  city: '广东省深圳市',
-  organization: '低碳社区运营中心',
-  avatarUrl: readCachedAvatarUrl(),
-  tags: ['规则治理', '审核管理', '运营协同', '社区激励']
-})
-
-function parseTags(value) {
-  if (!value) {
-    return []
-  }
-  return String(value)
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-}
-
-function syncProfileCenterForm(source) {
-  profileCenterForm.name = source.fullName || source.nickname || profileCenterForm.name
-  profileCenterForm.gender = source.gender || '保密'
-  profileCenterForm.nickname = source.nickname || profileCenterForm.nickname
-  profileCenterForm.email = source.email || 'admin@lowcarbon.local'
-  profileCenterForm.phone = source.phone || '13800009999'
-  profileCenterForm.address = source.address || '广东省深圳市南山区低碳社区运营中心'
-  profileCenterForm.bio = source.bio || '负责社区低碳积分平台的规则配置、审核治理、商城履约与整体运营推进。'
-  profileCenterForm.role = source.role === 'ADMIN' ? '社区运营管理员' : '社区低碳居民'
-  profileCenterForm.city = source.city || '广东省深圳市'
-  profileCenterForm.organization = source.organization || '低碳社区运营中心'
-  profileCenterForm.avatarUrl = source.avatarUrl || source.avatar || readCachedAvatarUrl() || profileCenterForm.avatarUrl || ''
-  writeCachedAvatarUrl(profileCenterForm.avatarUrl)
-  profileCenterForm.tags = parseTags(source.tags)
-  if (!profileCenterForm.tags.length) {
-    profileCenterForm.tags = ['规则治理', '审核管理', '运营协同', '社区激励']
-  }
-}
-
-function updateSessionUser(patch) {
-  const raw = sessionStorage.getItem('user')
-  if (!raw) {
-    return
-  }
-  try {
-    const parsed = JSON.parse(raw)
-    sessionStorage.setItem('user', JSON.stringify({ ...parsed, ...patch }))
-  } catch {
-    // Ignore malformed session cache.
-  }
-}
-
-watch(
-  profile,
-  (value) => {
-    if (!value) {
-      return
-    }
-    syncProfileCenterForm(value)
-  },
-  { immediate: true, deep: true }
-)
-
 watch([message, messageType], ([nextMessage, nextType]) => {
   if (nextType !== 'success' || !nextMessage) {
     return
@@ -1286,11 +1008,40 @@ watch([message, messageType], ([nextMessage, nextType]) => {
   clearMessage()
 })
 
-const profileAvatarUrl = computed(() => {
-  const candidate = profileCenterForm.avatarUrl || profile.value?.avatarUrl || profile.value?.avatar || ''
-  if (!candidate) return defaultProfileAvatarUrl
-  const resolved = resolveImageUrl(candidate)
-  return resolved || defaultProfileAvatarUrl
+const {
+  profileCenterForm,
+  profileSaveMessage,
+  profileSaveType,
+  profileAvatarUploading,
+  profileAvatarUrl,
+  setProfileAvatarInput,
+  triggerProfileAvatarUpload,
+  onProfileAvatarChange,
+  saveProfile
+} = useProfileCenter({
+  storageKey: 'lowcarbon:admin-avatar:v1',
+  defaults: {
+    name: '社区管理员',
+    gender: '保密',
+    nickname: '运营管理员',
+    email: 'admin@lowcarbon.local',
+    phone: '13800009999',
+    address: '广东省深圳市南山区低碳社区运营中心',
+    bio: '负责社区低碳积分平台的规则配置、审核治理、商城履约与整体运营推进。',
+    role: '社区运营管理员',
+    city: '广东省深圳市',
+    organization: '低碳社区运营中心',
+    avatarUrl: '',
+    tags: ['规则治理', '审核管理', '运营协同', '社区激励']
+  },
+  sourceWatcher: () => profile.value,
+  resolveImageUrl,
+  uploadImage,
+  updateProfile: updateAdminProfile,
+  applyProfileData: (data) => {
+    profile.value = data
+  },
+  resolveDefaultEmail: () => 'admin@lowcarbon.local'
 })
 
 const usersPageSize = 5
