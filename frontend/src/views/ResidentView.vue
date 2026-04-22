@@ -1,129 +1,43 @@
 <template>
-  <main class="workspace-shell">
-    <div class="workspace-frame">
-      <aside class="workspace-sidebar">
-        <div class="workspace-brand">
-          <div class="workspace-brand-mark">LC</div>
-          <div>
-            <strong>居民低碳中心</strong>
-            <span>{{ profile.nickname || user.nickname }} · {{ user.username }}</span>
-          </div>
-        </div>
+  <WorkspaceShell
+    brand-mark="LC"
+    brand-title="居民低碳中心"
+    :brand-subtitle="`${profile.nickname || user.nickname} · ${user.username}`"
+    nav-aria-label="居民端模块导航"
+    :sections="filteredSidebarSections"
+    :search-keyword="sectionSearchKeyword"
+    @update:searchKeyword="sectionSearchKeyword = $event"
+    :set-search-input-ref="setSectionSearchInput"
+    search-aria-label="搜索居民端模块"
+    :open-tabs="openTabSections"
+    :active-section="activeSection"
+    @update:activeSection="activeSection = $event"
+    :active-section-meta="activeSectionMeta"
+    :avatar-menu-open="avatarMenuOpen"
+    @update:avatarMenuOpen="avatarMenuOpen = $event"
+    :profile-avatar-url="profileAvatarUrl"
+    :profile-name="profileCenterForm.name"
+    :profile-role="profileCenterForm.role"
+    footer-title="今日状态"
+    :footer-text="selectedRule ? `当前规则剩余 ${remainingQuota} 次额度` : '点击左侧模块后会在顶部生成最近打开页签。'"
+    breadcrumb-prefix="居民端"
+    empty-selection-title="请选择一个工作模块"
+    empty-selection-description="左侧菜单用于打开模块，顶部仅保留最近打开的页签，并支持随时关闭。"
+    empty-state-title="从左侧打开一个模块开始工作"
+    empty-state-description="例如先打开“行为上报”提交低碳记录，或者打开“积分商城”查看当前可兑换商品。"
+    @open-section="openSection"
+    @close-section="closeSection"
+    @clear-section-search="clearSectionSearch"
+    @open-first-matched-section="openFirstMatchedSection"
+    @refresh="loadAll"
+    @open-profile="openProfileCenter"
+    @logout="logout"
+  >
+    <template #feedback>
+      <div v-if="message" class="inline-message error">{{ message }}</div>
+    </template>
 
-        <nav class="workspace-nav" aria-label="居民端模块导航">
-          <button
-            v-for="section in filteredSidebarSections"
-            :key="section.id"
-            class="workspace-nav-item"
-            :class="{ active: activeSection === section.id }"
-            @click="openSection(section.id)"
-          >
-            <span class="workspace-nav-mark">{{ section.short }}</span>
-            <span class="workspace-nav-copy">
-              <strong>{{ section.label }}</strong>
-              <span>{{ section.hint }}</span>
-            </span>
-          </button>
-          <div v-if="!filteredSidebarSections.length" class="workspace-nav-empty">
-            没有匹配到模块，试试其他关键词
-          </div>
-        </nav>
-
-        <div class="workspace-footer">
-          <strong>今日状态</strong>
-          <p>
-            {{ selectedRule ? `当前规则剩余 ${remainingQuota} 次额度` : '点击左侧模块后会在顶部生成最近打开页签。' }}
-          </p>
-        </div>
-      </aside>
-
-      <section class="workspace-main">
-        <header class="workspace-topbar">
-          <div>
-            <div class="workspace-breadcrumb">居民端 / {{ activeSectionMeta ? activeSectionMeta.label : '未打开模块' }}</div>
-            <h1 class="workspace-title">{{ activeSectionMeta ? activeSectionMeta.label : '请选择一个工作模块' }}</h1>
-            <p class="workspace-subtitle">
-              {{ activeSectionMeta ? activeSectionMeta.description : '左侧菜单用于打开模块，顶部仅保留最近打开的页签，并支持随时关闭。' }}
-            </p>
-          </div>
-
-          <div class="workspace-toolbar">
-            <div class="workspace-search">
-              <input
-                ref="sectionSearchInputRef"
-                v-model.trim="sectionSearchKeyword"
-                class="workspace-search-input"
-                type="search"
-                placeholder="搜索模块，回车打开首个匹配项"
-                aria-label="搜索居民端模块"
-                @keydown.enter.prevent="openFirstMatchedSection"
-                @keydown.esc.prevent="clearSectionSearch"
-              />
-              <kbd>Ctrl K</kbd>
-            </div>
-            <div class="workspace-actions">
-              <button class="btn secondary" @click="loadAll">刷新数据</button>
-            </div>
-            <div
-              class="workspace-avatar-wrap"
-              @mouseenter="avatarMenuOpen = true"
-              @mouseleave="avatarMenuOpen = false"
-            >
-              <button class="workspace-avatar" @click="avatarMenuOpen = !avatarMenuOpen">
-                <span class="workspace-avatar-image workspace-avatar-photo">
-                  <img :src="profileAvatarUrl" alt="头像" />
-                </span>
-              </button>
-
-              <div v-if="avatarMenuOpen" class="workspace-avatar-menu">
-                <div class="workspace-avatar-header">
-                  <div class="workspace-avatar-image workspace-avatar-photo">
-                    <img :src="profileAvatarUrl" alt="头像" />
-                  </div>
-                  <div class="workspace-avatar-meta">
-                    <strong>{{ profileCenterForm.name }}</strong>
-                    <span>{{ profileCenterForm.role }}</span>
-                  </div>
-                </div>
-
-                <div class="workspace-avatar-actions">
-                  <button class="workspace-avatar-action" @click="openProfileCenter">
-                    <span class="workspace-avatar-icon">人</span>
-                    <span>个人中心</span>
-                  </button>
-                  <button class="workspace-avatar-action danger" @click="logout">
-                    <span class="workspace-avatar-icon">退</span>
-                    <span>退出登录</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <div class="workspace-tabs">
-          <button
-            v-for="section in openTabSections"
-            :key="section.id"
-            class="workspace-tab"
-            :class="{ active: activeSection === section.id }"
-            @click="activeSection = section.id"
-          >
-            <span class="workspace-tab-label">{{ section.label }}</span>
-            <span class="workspace-tab-close" @click.stop="closeSection(section.id)">×</span>
-          </button>
-        </div>
-
-        <div class="workspace-content">
-          <div v-if="message" class="inline-message error">{{ message }}</div>
-
-          <div v-if="!activeSection" class="workspace-empty-stage">
-            <span class="workspace-kicker">Workspace</span>
-            <h2>从左侧打开一个模块开始工作</h2>
-            <p>例如先打开“行为上报”提交低碳记录，或者打开“积分商城”查看当前可兑换商品。</p>
-          </div>
-
-          <section v-if="activeSection === 'overview'" class="workspace-pane">
+    <section v-if="activeSection === 'overview'" class="workspace-pane">
             <div class="pane-head">
               <div>
                 <span class="workspace-kicker">Overview</span>
@@ -195,7 +109,7 @@
             </div>
           </section>
 
-          <section v-if="activeSection === 'report'" class="workspace-pane">
+    <section v-if="activeSection === 'report'" class="workspace-pane">
             <div class="pane-head">
               <div>
                 <span class="workspace-kicker">Submit</span>
@@ -405,7 +319,7 @@
             </div>
           </section>
 
-          <section v-if="activeSection === 'reports'" class="workspace-pane">
+    <section v-if="activeSection === 'reports'" class="workspace-pane">
             <div class="pane-head">
               <div>
                 <span class="workspace-kicker">Reports</span>
@@ -463,7 +377,7 @@
             />
           </section>
 
-          <section v-if="activeSection === 'ledger'" class="workspace-pane">
+    <section v-if="activeSection === 'ledger'" class="workspace-pane">
             <div class="pane-head">
               <div>
                 <span class="workspace-kicker">Ledger</span>
@@ -503,7 +417,7 @@
             />
           </section>
 
-          <section v-if="activeSection === 'mall'" class="workspace-pane">
+    <section v-if="activeSection === 'mall'" class="workspace-pane">
             <div class="pane-head">
               <div>
                 <span class="workspace-kicker">Mall</span>
@@ -541,7 +455,7 @@
             />
           </section>
 
-          <section v-if="activeSection === 'orders'" class="workspace-pane">
+    <section v-if="activeSection === 'orders'" class="workspace-pane">
             <div class="pane-head">
               <div>
                 <span class="workspace-kicker">Orders</span>
@@ -586,7 +500,7 @@
             />
           </section>
 
-          <section v-if="activeSection === 'profile'" class="workspace-pane">
+    <section v-if="activeSection === 'profile'" class="workspace-pane">
             <div class="pane-head">
               <div>
                 <span class="workspace-kicker">Profile</span>
@@ -705,11 +619,8 @@
                 </div>
               </section>
             </div>
-          </section>
-        </div>
-      </section>
-    </div>
-  </main>
+    </section>
+  </WorkspaceShell>
 </template>
 
 <script setup>
@@ -723,6 +634,7 @@ import { useResidentPage } from '../composables/useResidentPage'
 import { useWorkspaceState } from '../composables/workspace/useWorkspaceState'
 import { updateResidentProfile, uploadImage } from '../services/residentService'
 import AppPagination from '../components/AppPagination.vue'
+import WorkspaceShell from '../components/workspace/WorkspaceShell.vue'
 import residentSections from '../constants/residentSections'
 
 use([PieChart, TooltipComponent, LegendComponent, LabelLayout, UniversalTransition, CanvasRenderer])
@@ -755,7 +667,7 @@ function writeCachedAvatarUrl(url) {
 const workspaceStateStorageKey = 'lowcarbon:resident-workspace:v1'
 const {
   sectionSearchKeyword,
-  sectionSearchInputRef,
+  setSectionSearchInput,
   filteredSidebarSections,
   openTabs,
   activeSection,

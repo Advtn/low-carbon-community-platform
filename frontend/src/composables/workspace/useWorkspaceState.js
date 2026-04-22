@@ -93,6 +93,10 @@ export function useWorkspaceState({
     sectionSearchInputRef.value.select()
   }
 
+  function setSectionSearchInput(element) {
+    sectionSearchInputRef.value = element
+  }
+
   function handleWorkspaceShortcut(event) {
     if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === 'k') {
       event.preventDefault()
@@ -122,7 +126,7 @@ export function useWorkspaceState({
 
   return {
     sectionSearchKeyword,
-    sectionSearchInputRef,
+    setSectionSearchInput,
     sidebarSections,
     filteredSidebarSections,
     openTabs,

@@ -1,155 +1,71 @@
 <template>
-  <main class="workspace-shell">
-    <div class="workspace-frame">
-      <aside class="workspace-sidebar">
-        <div class="workspace-brand">
-          <div class="workspace-brand-mark">AD</div>
-          <div>
-            <strong>社区运营后台</strong>
-            <span>规则、审核、商城与订单协同</span>
-          </div>
+  <WorkspaceShell
+    brand-mark="AD"
+    brand-title="社区运营后台"
+    brand-subtitle="规则、审核、商城与订单协同"
+    nav-aria-label="管理员模块导航"
+    :sections="filteredSidebarSections"
+    :search-keyword="sectionSearchKeyword"
+    @update:searchKeyword="sectionSearchKeyword = $event"
+    :set-search-input-ref="setSectionSearchInput"
+    search-aria-label="搜索管理端模块"
+    :open-tabs="openTabSections"
+    :active-section="activeSection"
+    @update:activeSection="activeSection = $event"
+    :active-section-meta="activeSectionMeta"
+    :avatar-menu-open="avatarMenuOpen"
+    @update:avatarMenuOpen="avatarMenuOpen = $event"
+    :profile-avatar-url="profileAvatarUrl"
+    :profile-name="profileCenterForm.name"
+    :profile-role="profileCenterForm.role"
+    footer-title="今日待处理"
+    :footer-text="`待审核上报 ${dashboard.pendingReportCount} 条，待处理订单 ${dashboard.pendingOrderCount} 笔。`"
+    breadcrumb-prefix="管理员端"
+    empty-selection-title="请选择一个工作模块"
+    empty-selection-description="左侧点击一个模块即可在顶部生成最近打开页签，关闭后会自动回到上一个仍然打开的页签。"
+    empty-state-title="从左侧打开一个管理模块"
+    empty-state-description="例如先打开“审核工作台”处理待审核上报，或者打开“商品管理”维护积分商城库存。"
+    @open-section="openSection"
+    @close-section="closeSection"
+    @clear-section-search="clearSectionSearch"
+    @open-first-matched-section="openFirstMatchedSection"
+    @refresh="loadAll"
+    @open-profile="openProfileCenter"
+    @logout="logout"
+  >
+    <template #feedback>
+      <div
+        v-if="message && messageType !== 'success'"
+        class="action-toast is-error"
+        :style="{ '--toast-duration': '5s' }"
+        role="status"
+        aria-live="assertive"
+      >
+        <span class="action-toast-icon" aria-hidden="true">!</span>
+        <div class="action-toast-body">
+          <p class="action-toast-title">操作失败</p>
+          <p class="action-toast-text">{{ message }}</p>
+          <span class="action-toast-progress" aria-hidden="true"></span>
         </div>
+        <button class="action-toast-close" type="button" aria-label="关闭提示" @click="clearMessage">×</button>
+      </div>
 
-        <nav class="workspace-nav" aria-label="管理员模块导航">
-          <button
-            v-for="section in filteredSidebarSections"
-            :key="section.id"
-            class="workspace-nav-item"
-            :class="{ active: activeSection === section.id }"
-            @click="openSection(section.id)"
-          >
-            <span class="workspace-nav-mark">{{ section.short }}</span>
-            <span class="workspace-nav-copy">
-              <strong>{{ section.label }}</strong>
-              <span>{{ section.hint }}</span>
-            </span>
-          </button>
-          <div v-if="!filteredSidebarSections.length" class="workspace-nav-empty">
-            没有匹配到模块，试试其他关键词
+      <div v-if="successDialogVisible" class="success-dialog-mask" role="dialog" aria-modal="true" aria-labelledby="success-dialog-title">
+        <section class="success-dialog-card">
+          <header class="success-dialog-head">
+            <h3 id="success-dialog-title">操作成功</h3>
+          </header>
+          <div class="success-dialog-body">
+            <p>{{ successDialogMessage }}</p>
           </div>
-        </nav>
+          <footer class="success-dialog-actions">
+            <button class="btn" type="button" @click="closeSuccessDialog">确定</button>
+          </footer>
+        </section>
+      </div>
+    </template>
 
-        <div class="workspace-footer">
-          <strong>今日待处理</strong>
-          <p>待审核上报 {{ dashboard.pendingReportCount }} 条，待处理订单 {{ dashboard.pendingOrderCount }} 笔。</p>
-        </div>
-      </aside>
-
-      <section class="workspace-main">
-        <header class="workspace-topbar">
-          <div>
-            <div class="workspace-breadcrumb">管理员端 / {{ activeSectionMeta ? activeSectionMeta.label : '未打开模块' }}</div>
-            <h1 class="workspace-title">{{ activeSectionMeta ? activeSectionMeta.label : '请选择一个工作模块' }}</h1>
-            <p class="workspace-subtitle">
-              {{ activeSectionMeta ? activeSectionMeta.description : '左侧点击一个模块即可在顶部生成最近打开页签，关闭后会自动回到上一个仍然打开的页签。' }}
-            </p>
-          </div>
-
-          <div class="workspace-toolbar">
-            <div class="workspace-search">
-              <input
-                ref="sectionSearchInputRef"
-                v-model.trim="sectionSearchKeyword"
-                class="workspace-search-input"
-                type="search"
-                placeholder="搜索模块，回车打开首个匹配项"
-                aria-label="搜索管理端模块"
-                @keydown.enter.prevent="openFirstMatchedSection"
-                @keydown.esc.prevent="clearSectionSearch"
-              />
-              <kbd>Ctrl K</kbd>
-            </div>
-            <div class="workspace-actions">
-              <button class="btn secondary" @click="loadAll">刷新数据</button>
-            </div>
-            <div
-              class="workspace-avatar-wrap"
-              @mouseenter="avatarMenuOpen = true"
-              @mouseleave="avatarMenuOpen = false"
-            >
-              <button class="workspace-avatar" @click="avatarMenuOpen = !avatarMenuOpen">
-                <span class="workspace-avatar-image workspace-avatar-photo">
-                  <img :src="profileAvatarUrl" alt="头像" />
-                </span>
-              </button>
-
-              <div v-if="avatarMenuOpen" class="workspace-avatar-menu">
-                <div class="workspace-avatar-header">
-                  <div class="workspace-avatar-image workspace-avatar-photo">
-                    <img :src="profileAvatarUrl" alt="头像" />
-                  </div>
-                  <div class="workspace-avatar-meta">
-                    <strong>{{ profileCenterForm.name }}</strong>
-                    <span>{{ profileCenterForm.role }}</span>
-                  </div>
-                </div>
-
-                <div class="workspace-avatar-actions">
-                  <button class="workspace-avatar-action" @click="openProfileCenter">
-                    <span class="workspace-avatar-icon">人</span>
-                    <span>个人中心</span>
-                  </button>
-                  <button class="workspace-avatar-action danger" @click="logout">
-                    <span class="workspace-avatar-icon">退</span>
-                    <span>退出登录</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <div class="workspace-tabs">
-          <button
-            v-for="section in openTabSections"
-            :key="section.id"
-            class="workspace-tab"
-            :class="{ active: activeSection === section.id }"
-            @click="activeSection = section.id"
-          >
-            <span class="workspace-tab-label">{{ section.label }}</span>
-            <span class="workspace-tab-close" @click.stop="closeSection(section.id)">×</span>
-          </button>
-        </div>
-
-        <div class="workspace-content">
-          <div
-            v-if="message && messageType !== 'success'"
-            class="action-toast is-error"
-            :style="{ '--toast-duration': '5s' }"
-            role="status"
-            aria-live="assertive"
-          >
-            <span class="action-toast-icon" aria-hidden="true">!</span>
-            <div class="action-toast-body">
-              <p class="action-toast-title">操作失败</p>
-              <p class="action-toast-text">{{ message }}</p>
-              <span class="action-toast-progress" aria-hidden="true"></span>
-            </div>
-            <button class="action-toast-close" type="button" aria-label="关闭提示" @click="clearMessage">×</button>
-          </div>
-
-          <div v-if="successDialogVisible" class="success-dialog-mask" role="dialog" aria-modal="true" aria-labelledby="success-dialog-title">
-            <section class="success-dialog-card">
-              <header class="success-dialog-head">
-                <h3 id="success-dialog-title">操作成功</h3>
-              </header>
-              <div class="success-dialog-body">
-                <p>{{ successDialogMessage }}</p>
-              </div>
-              <footer class="success-dialog-actions">
-                <button class="btn" type="button" @click="closeSuccessDialog">确定</button>
-              </footer>
-            </section>
-          </div>
-
-          <div v-if="!activeSection" class="workspace-empty-stage">
-            <span class="workspace-kicker">Workspace</span>
-            <h2>从左侧打开一个管理模块</h2>
-            <p>例如先打开“审核工作台”处理待审核上报，或者打开“商品管理”维护积分商城库存。</p>
-          </div>
-
-          <section v-if="activeSection === 'overview'" class="workspace-pane">
+    <section v-if="activeSection === 'overview'" class="workspace-pane">
             <div class="pane-head">
               <div>
                 <span class="workspace-kicker">Overview</span>
@@ -244,7 +160,7 @@
             </div>
           </section>
 
-          <section v-if="activeSection === 'users'" class="workspace-pane">
+    <section v-if="activeSection === 'users'" class="workspace-pane">
             <div class="pane-head">
               <div>
                 <span class="workspace-kicker">Users</span>
@@ -371,7 +287,7 @@
             </div>
           </section>
 
-          <section v-if="activeSection === 'rules'" class="workspace-pane">
+    <section v-if="activeSection === 'rules'" class="workspace-pane">
             <div class="pane-head">
               <div>
                 <span class="workspace-kicker">Rules</span>
@@ -525,7 +441,7 @@
             </div>
           </section>
 
-          <section v-if="activeSection === 'audits'" class="workspace-pane">
+    <section v-if="activeSection === 'audits'" class="workspace-pane">
             <div class="pane-head">
               <div>
                 <span class="workspace-kicker">Audit</span>
@@ -589,7 +505,7 @@
             />
           </section>
 
-          <section v-if="activeSection === 'items'" class="workspace-pane">
+    <section v-if="activeSection === 'items'" class="workspace-pane">
             <div class="pane-head">
               <div>
                 <span class="workspace-kicker">Mall</span>
@@ -730,7 +646,7 @@
             </div>
           </section>
 
-          <section v-if="activeSection === 'orders'" class="workspace-pane">
+    <section v-if="activeSection === 'orders'" class="workspace-pane">
             <div class="pane-head">
               <div>
                 <span class="workspace-kicker">Orders</span>
@@ -786,7 +702,7 @@
             />
           </section>
 
-          <section v-if="activeSection === 'profile'" class="workspace-pane">
+    <section v-if="activeSection === 'profile'" class="workspace-pane">
             <div class="pane-head">
               <div>
                 <span class="workspace-kicker">Profile</span>
@@ -905,11 +821,8 @@
                 </div>
               </section>
             </div>
-          </section>
-        </div>
-      </section>
-    </div>
-  </main>
+    </section>
+  </WorkspaceShell>
 </template>
 
 <script setup>
@@ -918,6 +831,7 @@ import { useAdminPage } from '../composables/useAdminPage'
 import { useWorkspaceState } from '../composables/workspace/useWorkspaceState'
 import { updateAdminProfile, uploadImage } from '../services/adminService'
 import AppPagination from '../components/AppPagination.vue'
+import WorkspaceShell from '../components/workspace/WorkspaceShell.vue'
 import adminSections from '../constants/adminSections'
 
 const defaultProfileAvatarUrl = `data:image/svg+xml;utf8,${encodeURIComponent(
@@ -948,7 +862,7 @@ function writeCachedAvatarUrl(url) {
 const workspaceStateStorageKey = 'lowcarbon:admin-workspace:v1'
 const {
   sectionSearchKeyword,
-  sectionSearchInputRef,
+  setSectionSearchInput,
   filteredSidebarSections,
   openTabs,
   activeSection,
