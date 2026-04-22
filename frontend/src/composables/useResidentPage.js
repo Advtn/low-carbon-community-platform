@@ -64,10 +64,14 @@ export function useResidentPage() {
   const routeEndMarker = ref(null)
   const routeStartPoint = ref(null)
   const routeEndPoint = ref(null)
+  const routeStartLabel = ref('')
+  const routeEndLabel = ref('')
   const routeLoading = ref(false)
   const routeError = ref('')
   const locatingCurrent = ref(false)
   const currentLocationMarker = ref(null)
+  let routeStartLabelSeq = 0
+  let routeEndLabelSeq = 0
 
   const quickQuantities = [1, 2, 3, 5]
   const transportModes = [
@@ -112,16 +116,8 @@ export function useResidentPage() {
     if (!routeStartPoint.value || !routeEndPoint.value) return ''
     return assistForm.distance ? String(assistForm.distance).trim() : ''
   })
-  const routeStartText = computed(() =>
-    routeStartPoint.value
-      ? `${routeStartPoint.value.lat.toFixed(6)}, ${routeStartPoint.value.lng.toFixed(6)}`
-      : '未选择'
-  )
-  const routeEndText = computed(() =>
-    routeEndPoint.value
-      ? `${routeEndPoint.value.lat.toFixed(6)}, ${routeEndPoint.value.lng.toFixed(6)}`
-      : '未选择'
-  )
+  const routeStartText = computed(() => formatPointLabel(routeStartPoint.value, routeStartLabel.value))
+  const routeEndText = computed(() => formatPointLabel(routeEndPoint.value, routeEndLabel.value))
 
   const todayUsedCount = computed(() => {
     if (!selectedRule.value) return 0
@@ -191,6 +187,93 @@ export function useResidentPage() {
       }
     }
   )
+
+  function formatPoint(point) {
+    if (!point) return ''
+    return `${Number(point.lat).toFixed(6)}, ${Number(point.lng).toFixed(6)}`
+  }
+
+  function formatPointLabel(point, label) {
+    if (!point) return '未选择'
+    const coords = formatPoint(point)
+    if (!label) return coords
+    return `${label}（${coords}）`
+  }
+
+  function isSamePoint(a, b) {
+    if (!a || !b) return false
+    return Math.abs(Number(a.lat) - Number(b.lat)) < 0.000001 && Math.abs(Number(a.lng) - Number(b.lng)) < 0.000001
+  }
+
+  function buildReverseLabel(data) {
+    const address = data?.address || {}
+    const district = address.city || address.town || address.county || ''
+    const area = address.suburb || address.neighbourhood || address.village || ''
+    const road = address.road || address.pedestrian || address.hamlet || ''
+    const houseNumber = address.house_number || ''
+    const merged = [district, area, road, houseNumber].filter(Boolean).join('')
+    if (merged) return merged
+    if (typeof data?.name === 'string' && data.name.trim()) return data.name.trim()
+    if (typeof data?.display_name === 'string' && data.display_name.trim()) {
+      return data.display_name
+        .split(',')
+        .slice(0, 3)
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join(' ')
+    }
+    return ''
+  }
+
+  async function resolvePointLabel(which, point) {
+    if (!point) return
+    const isStart = which === 'start'
+    const seq = isStart ? ++routeStartLabelSeq : ++routeEndLabelSeq
+
+    if (isStart) {
+      routeStartLabel.value = '解析中...'
+    } else {
+      routeEndLabel.value = '解析中...'
+    }
+
+    const controller = new AbortController()
+    const timerId = setTimeout(() => controller.abort(), 8000)
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(
+        point.lat
+      )}&lon=${encodeURIComponent(point.lng)}&zoom=18&addressdetails=1&accept-language=zh-CN`
+      const response = await fetch(url, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: {
+          Accept: 'application/json'
+        }
+      })
+      if (!response.ok) {
+        throw new Error(`reverse geocode failed: ${response.status}`)
+      }
+      const data = await response.json()
+      const label = buildReverseLabel(data)
+
+      if (isStart) {
+        if (seq !== routeStartLabelSeq || !isSamePoint(routeStartPoint.value, point)) return
+        routeStartLabel.value = label || ''
+      } else {
+        if (seq !== routeEndLabelSeq || !isSamePoint(routeEndPoint.value, point)) return
+        routeEndLabel.value = label || ''
+      }
+    } catch {
+      if (isStart) {
+        if (seq !== routeStartLabelSeq || !isSamePoint(routeStartPoint.value, point)) return
+        routeStartLabel.value = ''
+      } else {
+        if (seq !== routeEndLabelSeq || !isSamePoint(routeEndPoint.value, point)) return
+        routeEndLabel.value = ''
+      }
+    } finally {
+      clearTimeout(timerId)
+    }
+  }
 
   async function loadAll(options = {}) {
     const { keepFeedback = false } = options
@@ -498,6 +581,10 @@ export function useResidentPage() {
     routeLoading.value = false
     routeStartPoint.value = null
     routeEndPoint.value = null
+    routeStartLabel.value = ''
+    routeEndLabel.value = ''
+    routeStartLabelSeq += 1
+    routeEndLabelSeq += 1
     assistForm.distance = ''
     if (routeStartMarker.value) {
       routeStartMarker.value.remove()
@@ -547,6 +634,8 @@ export function useResidentPage() {
 
         if (!routeStartPoint.value) {
           routeStartPoint.value = point
+          routeStartLabel.value = ''
+          resolvePointLabel('start', point)
           if (routeStartMarker.value) {
             routeStartMarker.value.remove()
           }
@@ -587,11 +676,15 @@ export function useResidentPage() {
     if (!routeStartPoint.value || (routeStartPoint.value && routeEndPoint.value)) {
       clearRouteSelection()
       routeStartPoint.value = point
+      routeStartLabel.value = ''
+      resolvePointLabel('start', point)
       routeStartMarker.value = L.marker([point.lat, point.lng]).addTo(map.value)
       return
     }
 
     routeEndPoint.value = point
+    routeEndLabel.value = ''
+    resolvePointLabel('end', point)
     routeEndMarker.value = L.marker([point.lat, point.lng]).addTo(map.value)
     drawRouteAndDistance()
   }
