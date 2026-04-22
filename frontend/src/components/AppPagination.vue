@@ -11,7 +11,7 @@
       上一页
     </button>
 
-    <template v-for="item in pageItems" :key="item.key">
+    <span v-for="item in pageItems" :key="item.key" class="pagination-item">
       <button
         v-if="item.type === 'page'"
         class="pagination-btn"
@@ -23,7 +23,7 @@
         {{ item.value }}
       </button>
       <span v-else class="pagination-ellipsis" aria-hidden="true">…</span>
-    </template>
+    </span>
 
     <button
       class="pagination-btn pagination-nav"
@@ -179,5 +179,9 @@ const pageItems = computed(() => {
 
 .pagination-nav {
   min-width: auto;
+}
+
+.pagination-item {
+  display: contents;
 }
 </style>

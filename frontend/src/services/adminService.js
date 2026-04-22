@@ -28,6 +28,16 @@ export function updateAdminProfile(payload) {
   return client.put('/user/profile', payload)
 }
 
+export function uploadImage(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return client.post('/common/upload-image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
 export function createUser(payload) {
   return client.post('/admin/users', payload)
 }

@@ -70,12 +70,16 @@
               @mouseleave="avatarMenuOpen = false"
             >
               <button class="workspace-avatar" @click="avatarMenuOpen = !avatarMenuOpen">
-                <span class="workspace-avatar-image">{{ avatarInitials }}</span>
+                <span class="workspace-avatar-image workspace-avatar-photo">
+                  <img :src="profileAvatarUrl" alt="头像" />
+                </span>
               </button>
 
               <div v-if="avatarMenuOpen" class="workspace-avatar-menu">
                 <div class="workspace-avatar-header">
-                  <div class="workspace-avatar-image">{{ avatarInitials }}</div>
+                  <div class="workspace-avatar-image workspace-avatar-photo">
+                    <img :src="profileAvatarUrl" alt="头像" />
+                  </div>
                   <div class="workspace-avatar-meta">
                     <strong>{{ profileCenterForm.name }}</strong>
                     <span>{{ profileCenterForm.role }}</span>
@@ -600,7 +604,28 @@
               <section class="profile-card">
                 <div class="profile-cover"></div>
                 <div class="profile-body">
-                  <div class="profile-avatar">{{ avatarInitials }}</div>
+                  <div class="profile-avatar-wrap">
+                    <div class="profile-avatar profile-avatar-photo">
+                      <img :src="profileAvatarUrl" alt="个人头像" />
+                    </div>
+                    <div class="profile-avatar-upload">
+                      <input
+                        ref="profileAvatarInputRef"
+                        class="profile-avatar-input"
+                        type="file"
+                        accept="image/*"
+                        @change="onProfileAvatarChange"
+                      />
+                      <button
+                        class="btn ghost profile-avatar-btn"
+                        type="button"
+                        :disabled="profileAvatarUploading"
+                        @click="triggerProfileAvatarUpload"
+                      >
+                        {{ profileAvatarUploading ? '上传中...' : '上传头像' }}
+                      </button>
+                    </div>
+                  </div>
                   <h3 class="profile-name">{{ profileCenterForm.name }}</h3>
                   <p class="profile-desc">{{ profileCenterForm.bio }}</p>
 
@@ -695,10 +720,35 @@ import { TooltipComponent, LegendComponent } from 'echarts/components'
 import { LabelLayout, UniversalTransition } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
 import { useResidentPage } from '../composables/useResidentPage'
-import { updateResidentProfile } from '../services/residentService'
+import { updateResidentProfile, uploadImage } from '../services/residentService'
 import AppPagination from '../components/AppPagination.vue'
 
 use([PieChart, TooltipComponent, LegendComponent, LabelLayout, UniversalTransition, CanvasRenderer])
+
+const defaultProfileAvatarUrl = `data:image/svg+xml;utf8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#9cc9b2"/><stop offset="1" stop-color="#e0c39f"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#g)"/><circle cx="64" cy="50" r="22" fill="#f7f5ef"/><path d="M24 118c4-22 19-34 40-34s36 12 40 34" fill="#f7f5ef"/></svg>`
+)}`
+const profileAvatarStorageKey = 'lowcarbon:resident-avatar:v1'
+
+function readCachedAvatarUrl() {
+  try {
+    return localStorage.getItem(profileAvatarStorageKey) || ''
+  } catch {
+    return ''
+  }
+}
+
+function writeCachedAvatarUrl(url) {
+  try {
+    if (url) {
+      localStorage.setItem(profileAvatarStorageKey, url)
+      return
+    }
+    localStorage.removeItem(profileAvatarStorageKey)
+  } catch {
+    // Ignore storage failures.
+  }
+}
 
 const residentSections = [
   { id: 'overview', short: '总', label: '总览', hint: '影响力与社区数据', description: '查看个人积分、减碳表现、行为构成和社区排名。', visibleInSidebar: true },
@@ -777,6 +827,8 @@ const activeSection = ref(restoredWorkspaceState.activeSection)
 const avatarMenuOpen = ref(false)
 const profileSaveMessage = ref('')
 const profileSaveType = ref('success')
+const profileAvatarInputRef = ref(null)
+const profileAvatarUploading = ref(false)
 
 const openTabSections = computed(() =>
   openTabs.value
@@ -847,6 +899,51 @@ function handleWorkspaceShortcut(event) {
   }
 }
 
+function triggerProfileAvatarUpload() {
+  if (profileAvatarUploading.value) return
+  profileAvatarInputRef.value?.click()
+}
+
+async function onProfileAvatarChange(event) {
+  const file = event?.target?.files?.[0]
+  if (event?.target) {
+    event.target.value = ''
+  }
+  if (!file) return
+
+  if (!String(file.type || '').startsWith('image/')) {
+    profileSaveType.value = 'error'
+    profileSaveMessage.value = '请选择图片文件'
+    return
+  }
+  if (Number(file.size || 0) > 5 * 1024 * 1024) {
+    profileSaveType.value = 'error'
+    profileSaveMessage.value = '头像文件不能超过 5MB'
+    return
+  }
+
+  profileAvatarUploading.value = true
+  profileSaveMessage.value = ''
+  try {
+    const { data } = await uploadImage(file)
+    const avatarUrl = data?.url || data?.path || ''
+    if (!avatarUrl) {
+      throw new Error('头像地址为空')
+    }
+    profileCenterForm.avatarUrl = avatarUrl
+    profile.avatarUrl = avatarUrl
+    profile.avatar = avatarUrl
+    writeCachedAvatarUrl(avatarUrl)
+    profileSaveType.value = 'success'
+    profileSaveMessage.value = '头像上传成功，请点击“保存资料”持久化'
+  } catch (error) {
+    profileSaveType.value = 'error'
+    profileSaveMessage.value = error.message || '头像上传失败，请稍后重试'
+  } finally {
+    profileAvatarUploading.value = false
+  }
+}
+
 async function saveProfile() {
   profileSaveMessage.value = ''
   try {
@@ -860,12 +957,15 @@ async function saveProfile() {
       bio: profileCenterForm.bio,
       city: profileCenterForm.city,
       organization: profileCenterForm.organization,
-      tags: profileCenterForm.tags.join(',')
+      tags: profileCenterForm.tags.join(','),
+      avatarUrl: profileCenterForm.avatarUrl,
+      avatar: profileCenterForm.avatarUrl
     })
 
     syncProfileCenterForm(data)
     Object.assign(profile, data)
-    updateSessionUser({ nickname: data.nickname })
+    writeCachedAvatarUrl(data.avatarUrl || data.avatar || profileCenterForm.avatarUrl || '')
+    updateSessionUser({ nickname: data.nickname, avatarUrl: data.avatarUrl || data.avatar || profileCenterForm.avatarUrl })
     profileSaveType.value = 'success'
     profileSaveMessage.value = '个人资料已保存'
   } catch (error) {
@@ -942,6 +1042,7 @@ const profileCenterForm = reactive({
   role: '社区低碳居民',
   city: '广东省深圳市',
   organization: '低碳社区志愿网络',
+  avatarUrl: user.avatarUrl || user.avatar || readCachedAvatarUrl(),
   tags: ['绿色出行', '社区分类', '持续打卡', '低碳生活']
 })
 
@@ -966,6 +1067,8 @@ function syncProfileCenterForm(source) {
   profileCenterForm.role = source.role === 'ADMIN' ? '社区运营管理员' : '社区低碳居民'
   profileCenterForm.city = source.city || '广东省深圳市'
   profileCenterForm.organization = source.organization || '低碳社区志愿网络'
+  profileCenterForm.avatarUrl = source.avatarUrl || source.avatar || readCachedAvatarUrl() || profileCenterForm.avatarUrl || ''
+  writeCachedAvatarUrl(profileCenterForm.avatarUrl)
   profileCenterForm.tags = parseTags(source.tags)
   if (!profileCenterForm.tags.length) {
     profileCenterForm.tags = ['绿色出行', '社区分类', '持续打卡', '低碳生活']
@@ -997,6 +1100,8 @@ watch(
     bio: profile.bio,
     city: profile.city,
     organization: profile.organization,
+    avatarUrl: profile.avatarUrl,
+    avatar: profile.avatar,
     tags: profile.tags,
     role: profile.role
   }),
@@ -1006,10 +1111,11 @@ watch(
   { immediate: true, deep: true }
 )
 
-const avatarInitials = computed(() => {
-  const base = profileCenterForm.name || user.nickname || user.username || 'LC'
-  const text = String(base).trim()
-  return text.slice(0, 2).toUpperCase()
+const profileAvatarUrl = computed(() => {
+  const candidate = profileCenterForm.avatarUrl || profile.avatarUrl || profile.avatar || ''
+  if (!candidate) return defaultProfileAvatarUrl
+  const resolved = resolveImageUrl(candidate)
+  return resolved || defaultProfileAvatarUrl
 })
 
 const leaderboardPageSize = 5
