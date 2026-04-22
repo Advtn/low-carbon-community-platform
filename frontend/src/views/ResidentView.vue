@@ -720,10 +720,10 @@ import { TooltipComponent, LegendComponent } from 'echarts/components'
 import { LabelLayout, UniversalTransition } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
 import { useResidentPage } from '../composables/useResidentPage'
+import { useWorkspaceState } from '../composables/workspace/useWorkspaceState'
 import { updateResidentProfile, uploadImage } from '../services/residentService'
 import AppPagination from '../components/AppPagination.vue'
 import residentSections from '../constants/residentSections'
-import { isValidSectionId, persistWorkspaceState, restoreWorkspaceState } from '../utils/workspaceState'
 
 use([PieChart, TooltipComponent, LegendComponent, LabelLayout, UniversalTransition, CanvasRenderer])
 
@@ -753,99 +753,31 @@ function writeCachedAvatarUrl(url) {
 }
 
 const workspaceStateStorageKey = 'lowcarbon:resident-workspace:v1'
-const restoredWorkspaceState = restoreWorkspaceState({
+const {
+  sectionSearchKeyword,
+  sectionSearchInputRef,
+  filteredSidebarSections,
+  openTabs,
+  activeSection,
+  openTabSections,
+  activeSectionMeta,
+  openSection,
+  closeSection,
+  clearSectionSearch,
+  openFirstMatchedSection
+} = useWorkspaceState({
   storageKey: workspaceStateStorageKey,
   sections: residentSections
 })
-const sectionSearchKeyword = ref('')
-const sectionSearchInputRef = ref(null)
-const sidebarSections = computed(() => residentSections.filter((section) => section.visibleInSidebar))
-const filteredSidebarSections = computed(() => {
-  const keyword = sectionSearchKeyword.value.trim().toLowerCase()
-  if (!keyword) {
-    return sidebarSections.value
-  }
-
-  return sidebarSections.value.filter((section) => {
-    const searchableText = `${section.label} ${section.hint} ${section.description}`.toLowerCase()
-    return searchableText.includes(keyword)
-  })
-})
-const openTabs = ref(restoredWorkspaceState.openTabs)
-const activeSection = ref(restoredWorkspaceState.activeSection)
 const avatarMenuOpen = ref(false)
 const profileSaveMessage = ref('')
 const profileSaveType = ref('success')
 const profileAvatarInputRef = ref(null)
 const profileAvatarUploading = ref(false)
 
-const openTabSections = computed(() =>
-  openTabs.value
-    .map((id) => residentSections.find((section) => section.id === id))
-    .filter(Boolean)
-)
-
-const activeSectionMeta = computed(
-  () => residentSections.find((section) => section.id === activeSection.value) || null
-)
-
-function openSection(sectionId) {
-  if (!isValidSectionId(residentSections, sectionId)) {
-    return
-  }
-  if (!openTabs.value.includes(sectionId)) {
-    openTabs.value.push(sectionId)
-  }
-  activeSection.value = sectionId
-}
-
-function closeSection(sectionId) {
-  const index = openTabs.value.indexOf(sectionId)
-  if (index === -1) return
-
-  const nextTabs = openTabs.value.filter((id) => id !== sectionId)
-  openTabs.value = nextTabs
-
-  if (activeSection.value === sectionId) {
-    if (nextTabs.length === 0) {
-      activeSection.value = null
-      return
-    }
-
-    const fallbackIndex = index > 0 ? index - 1 : 0
-    activeSection.value = nextTabs[fallbackIndex] || nextTabs[0]
-  }
-}
-
 function openProfileCenter() {
   openSection('profile')
   avatarMenuOpen.value = false
-}
-
-function clearSectionSearch() {
-  sectionSearchKeyword.value = ''
-}
-
-function openFirstMatchedSection() {
-  const firstMatch = filteredSidebarSections.value[0]
-  if (firstMatch) {
-    openSection(firstMatch.id)
-  }
-}
-
-function focusSectionSearch() {
-  if (!sectionSearchInputRef.value) {
-    return
-  }
-  sectionSearchInputRef.value.focus()
-  sectionSearchInputRef.value.select()
-}
-
-function handleWorkspaceShortcut(event) {
-  if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === 'k') {
-    event.preventDefault()
-    focusSectionSearch()
-  }
 }
 
 function triggerProfileAvatarUpload() {
@@ -1112,17 +1044,6 @@ watch(() => reports.value.length, (value) => clampPage(reportsPage, value, repor
 watch(() => ledger.value.length, (value) => clampPage(ledgerPage, value, ledgerPageSize), { immediate: true })
 watch(() => items.value.length, (value) => clampPage(itemsPage, value, itemsPageSize), { immediate: true })
 watch(() => orders.value.length, (value) => clampPage(ordersPage, value, ordersPageSize), { immediate: true })
-watch(
-  [openTabs, activeSection],
-  () => {
-    persistWorkspaceState({
-      storageKey: workspaceStateStorageKey,
-      openTabs: openTabs.value,
-      activeSection: activeSection.value
-    })
-  },
-  { deep: true }
-)
 
 const behaviorChartRef = ref(null)
 let behaviorChart = null
@@ -1244,12 +1165,10 @@ onMounted(async () => {
   await nextTick()
   renderBehaviorChart()
   window.addEventListener('resize', resizeBehaviorChart)
-  window.addEventListener('keydown', handleWorkspaceShortcut)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeBehaviorChart)
-  window.removeEventListener('keydown', handleWorkspaceShortcut)
   if (behaviorChart) {
     behaviorChart.dispose()
     behaviorChart = null

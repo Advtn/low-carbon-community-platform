@@ -913,12 +913,12 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useAdminPage } from '../composables/useAdminPage'
+import { useWorkspaceState } from '../composables/workspace/useWorkspaceState'
 import { updateAdminProfile, uploadImage } from '../services/adminService'
 import AppPagination from '../components/AppPagination.vue'
 import adminSections from '../constants/adminSections'
-import { isValidSectionId, persistWorkspaceState, restoreWorkspaceState } from '../utils/workspaceState'
 
 const defaultProfileAvatarUrl = `data:image/svg+xml;utf8,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#9cc9b2"/><stop offset="1" stop-color="#e0c39f"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#g)"/><circle cx="64" cy="50" r="22" fill="#f7f5ef"/><path d="M24 118c4-22 19-34 40-34s36 12 40 34" fill="#f7f5ef"/></svg>`
@@ -946,26 +946,22 @@ function writeCachedAvatarUrl(url) {
 }
 
 const workspaceStateStorageKey = 'lowcarbon:admin-workspace:v1'
-const restoredWorkspaceState = restoreWorkspaceState({
+const {
+  sectionSearchKeyword,
+  sectionSearchInputRef,
+  filteredSidebarSections,
+  openTabs,
+  activeSection,
+  openTabSections,
+  activeSectionMeta,
+  openSection,
+  closeSection,
+  clearSectionSearch,
+  openFirstMatchedSection
+} = useWorkspaceState({
   storageKey: workspaceStateStorageKey,
   sections: adminSections
 })
-const sectionSearchKeyword = ref('')
-const sectionSearchInputRef = ref(null)
-const sidebarSections = computed(() => adminSections.filter((section) => section.visibleInSidebar))
-const filteredSidebarSections = computed(() => {
-  const keyword = sectionSearchKeyword.value.trim().toLowerCase()
-  if (!keyword) {
-    return sidebarSections.value
-  }
-
-  return sidebarSections.value.filter((section) => {
-    const searchableText = `${section.label} ${section.hint} ${section.description}`.toLowerCase()
-    return searchableText.includes(keyword)
-  })
-})
-const openTabs = ref(restoredWorkspaceState.openTabs)
-const activeSection = ref(restoredWorkspaceState.activeSection)
 const avatarMenuOpen = ref(false)
 const userDialogOpen = ref(false)
 const ruleDialogOpen = ref(false)
@@ -993,44 +989,6 @@ const itemFormErrors = reactive({
   pointsCost: '',
   stock: ''
 })
-
-const openTabSections = computed(() =>
-  openTabs.value
-    .map((id) => adminSections.find((section) => section.id === id))
-    .filter(Boolean)
-)
-
-const activeSectionMeta = computed(
-  () => adminSections.find((section) => section.id === activeSection.value) || null
-)
-
-function openSection(sectionId) {
-  if (!isValidSectionId(adminSections, sectionId)) {
-    return
-  }
-  if (!openTabs.value.includes(sectionId)) {
-    openTabs.value.push(sectionId)
-  }
-  activeSection.value = sectionId
-}
-
-function closeSection(sectionId) {
-  const index = openTabs.value.indexOf(sectionId)
-  if (index === -1) return
-
-  const nextTabs = openTabs.value.filter((id) => id !== sectionId)
-  openTabs.value = nextTabs
-
-  if (activeSection.value === sectionId) {
-    if (nextTabs.length === 0) {
-      activeSection.value = null
-      return
-    }
-
-    const fallbackIndex = index > 0 ? index - 1 : 0
-    activeSection.value = nextTabs[fallbackIndex] || nextTabs[0]
-  }
-}
 
 function openProfileCenter() {
   openSection('profile')
@@ -1219,32 +1177,6 @@ function validateItemForm() {
   }
 
   return !Object.values(itemFormErrors).some(Boolean)
-}
-
-function clearSectionSearch() {
-  sectionSearchKeyword.value = ''
-}
-
-function openFirstMatchedSection() {
-  const firstMatch = filteredSidebarSections.value[0]
-  if (firstMatch) {
-    openSection(firstMatch.id)
-  }
-}
-
-function focusSectionSearch() {
-  if (!sectionSearchInputRef.value) {
-    return
-  }
-  sectionSearchInputRef.value.focus()
-  sectionSearchInputRef.value.select()
-}
-
-function handleWorkspaceShortcut(event) {
-  if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === 'k') {
-    event.preventDefault()
-    focusSectionSearch()
-  }
 }
 
 function triggerProfileAvatarUpload() {
@@ -1496,25 +1428,6 @@ watch(() => rules.value.length, (value) => clampPage(rulesPage, value, rulesPage
 watch(() => pendingReports.value.length, (value) => clampPage(pendingReportsPage, value, pendingReportsPageSize), { immediate: true })
 watch(() => items.value.length, (value) => clampPage(itemsPage, value, itemsPageSize), { immediate: true })
 watch(() => orders.value.length, (value) => clampPage(ordersPage, value, ordersPageSize), { immediate: true })
-watch(
-  [openTabs, activeSection],
-  () => {
-    persistWorkspaceState({
-      storageKey: workspaceStateStorageKey,
-      openTabs: openTabs.value,
-      activeSection: activeSection.value
-    })
-  },
-  { deep: true }
-)
-
-onMounted(() => {
-  window.addEventListener('keydown', handleWorkspaceShortcut)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleWorkspaceShortcut)
-})
 </script>
 
 <style scoped src="../styles/admin-view.css"></style>
