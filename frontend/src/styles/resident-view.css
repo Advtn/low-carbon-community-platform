@@ -16,3 +16,51 @@
 .resident-rank-item {
   align-items: center;
 }
+
+.proof-image-input {
+  padding: 8px 10px;
+}
+
+.proof-image-input::file-selector-button {
+  margin-right: 12px;
+  padding: 8px 14px;
+  border: 1px solid rgba(29, 122, 82, 0.22);
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f4fbf6, #e9f6ee);
+  color: #1d6a49;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.proof-image-input::file-selector-button:hover {
+  background: linear-gradient(135deg, #ecf8f1, #def2e8);
+  border-color: rgba(29, 122, 82, 0.3);
+}
+
+.proof-image-input::file-selector-button:active {
+  transform: translateY(1px);
+}
+
+.proof-image-input::-webkit-file-upload-button {
+  margin-right: 12px;
+  padding: 8px 14px;
+  border: 1px solid rgba(29, 122, 82, 0.22);
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f4fbf6, #e9f6ee);
+  color: #1d6a49;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.proof-image-input::-webkit-file-upload-button:hover {
+  background: linear-gradient(135deg, #ecf8f1, #def2e8);
+  border-color: rgba(29, 122, 82, 0.3);
+}
+
+.proof-image-input::-webkit-file-upload-button:active {
+  transform: translateY(1px);
+}

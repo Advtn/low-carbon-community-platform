@@ -165,17 +165,24 @@ export function useResidentPage() {
     isRoutePlannerVisible,
     async (visible) => {
       if (visible) {
-        await nextTick()
-        initMap()
-        if (map.value) {
-          map.value.invalidateSize()
-        }
+        await ensureRouteMapReady()
       } else {
         clearRouteSelection()
         destroyMap()
       }
     },
     { immediate: true }
+  )
+
+  watch(
+    mapContainerRef,
+    async (container) => {
+      if (!container || !isRoutePlannerVisible.value) {
+        return
+      }
+      await ensureRouteMapReady()
+    },
+    { flush: 'post' }
   )
 
   watch(
@@ -563,6 +570,45 @@ export function useResidentPage() {
 
     mapInstance.on('click', handleMapClick)
     map.value = mapInstance
+  }
+
+  async function ensureRouteMapReady() {
+    await nextTick()
+    if (!isRoutePlannerVisible.value || !mapContainerRef.value) return
+
+    const currentContainer = map.value?.getContainer?.() || null
+    if (map.value && currentContainer !== mapContainerRef.value) {
+      destroyMap()
+    }
+
+    initMap()
+    if (!map.value) return
+
+    map.value.invalidateSize()
+    restoreRouteOverlays()
+  }
+
+  function restoreRouteOverlays() {
+    if (!map.value) return
+
+    if (routeStartPoint.value && !routeStartMarker.value) {
+      routeStartMarker.value = L.marker([routeStartPoint.value.lat, routeStartPoint.value.lng]).addTo(
+        map.value
+      )
+    }
+
+    if (routeEndPoint.value && !routeEndMarker.value) {
+      routeEndMarker.value = L.marker([routeEndPoint.value.lat, routeEndPoint.value.lng]).addTo(map.value)
+    }
+
+    if (routeStartPoint.value && routeEndPoint.value && !routeLine.value) {
+      drawRouteAndDistance()
+      return
+    }
+
+    if (routeStartPoint.value && !routeEndPoint.value) {
+      map.value.setView([routeStartPoint.value.lat, routeStartPoint.value.lng], 15)
+    }
   }
 
   function destroyMap() {

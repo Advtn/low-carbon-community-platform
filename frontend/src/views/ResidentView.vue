@@ -352,7 +352,7 @@
                   <input
                     ref="imageInputRef"
                     type="file"
-                    class="input"
+                    class="input proof-image-input"
                     accept="image/*"
                     @change="onProofImageChange"
                   />

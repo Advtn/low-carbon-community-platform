@@ -114,20 +114,33 @@
 
         <div class="workspace-content">
           <div
-            v-if="message"
-            class="action-toast"
-            :class="messageType === 'success' ? 'is-success' : 'is-error'"
-            :style="{ '--toast-duration': messageType === 'success' ? '3.6s' : '5s' }"
+            v-if="message && messageType !== 'success'"
+            class="action-toast is-error"
+            :style="{ '--toast-duration': '5s' }"
             role="status"
-            :aria-live="messageType === 'success' ? 'polite' : 'assertive'"
+            aria-live="assertive"
           >
-            <span class="action-toast-icon" aria-hidden="true">{{ messageType === 'success' ? '✓' : '!' }}</span>
+            <span class="action-toast-icon" aria-hidden="true">!</span>
             <div class="action-toast-body">
-              <p class="action-toast-title">{{ messageType === 'success' ? '操作成功' : '操作失败' }}</p>
+              <p class="action-toast-title">操作失败</p>
               <p class="action-toast-text">{{ message }}</p>
               <span class="action-toast-progress" aria-hidden="true"></span>
             </div>
             <button class="action-toast-close" type="button" aria-label="关闭提示" @click="clearMessage">×</button>
+          </div>
+
+          <div v-if="successDialogVisible" class="success-dialog-mask" role="dialog" aria-modal="true" aria-labelledby="success-dialog-title">
+            <section class="success-dialog-card">
+              <header class="success-dialog-head">
+                <h3 id="success-dialog-title">操作成功</h3>
+              </header>
+              <div class="success-dialog-body">
+                <p>{{ successDialogMessage }}</p>
+              </div>
+              <footer class="success-dialog-actions">
+                <button class="btn" type="button" @click="closeSuccessDialog">确定</button>
+              </footer>
+            </section>
           </div>
 
           <div v-if="!activeSection" class="workspace-empty-stage">
@@ -1008,6 +1021,8 @@ const avatarMenuOpen = ref(false)
 const userDialogOpen = ref(false)
 const ruleDialogOpen = ref(false)
 const itemDialogOpen = ref(false)
+const successDialogVisible = ref(false)
+const successDialogMessage = ref('')
 const profileSaveMessage = ref('')
 const profileSaveType = ref('success')
 const profileAvatarInputRef = ref(null)
@@ -1147,6 +1162,10 @@ function closeItemDialog() {
   itemDialogOpen.value = false
   clearItemFormErrors()
   resetItemForm()
+}
+
+function closeSuccessDialog() {
+  successDialogVisible.value = false
 }
 
 async function submitItemDialog() {
@@ -1462,6 +1481,15 @@ watch(
   },
   { immediate: true, deep: true }
 )
+
+watch([message, messageType], ([nextMessage, nextType]) => {
+  if (nextType !== 'success' || !nextMessage) {
+    return
+  }
+  successDialogMessage.value = nextMessage
+  successDialogVisible.value = true
+  clearMessage()
+})
 
 const profileAvatarUrl = computed(() => {
   const candidate = profileCenterForm.avatarUrl || profile.value?.avatarUrl || profile.value?.avatar || ''
