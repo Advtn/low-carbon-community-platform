@@ -65,642 +65,93 @@
       </div>
     </template>
 
-    <section v-if="activeSection === 'overview'" class="workspace-pane">
-            <div class="pane-head">
-              <div>
-                <span class="workspace-kicker">Overview</span>
-                <h2>运营总览</h2>
-                <p>从居民活跃、规则启用、待处理任务到当日订单履约，把关键运营指标集中在同一工作区。</p>
-              </div>
-              <span class="badge">更新时间 {{ fmt(dashboard.updatedAt) }}</span>
-            </div>
+    <AdminOverviewSection
+      v-if="activeSection === 'overview'"
+      :dashboard="dashboard"
+      :fmt="fmt"
+    />
 
-            <div class="metric-strip">
-              <div class="metric-unit">
-                <span>居民用户</span>
-                <strong>{{ dashboard.residentCount }}</strong>
-                <small>当前系统中的居民账号总数</small>
-              </div>
-              <div class="metric-unit">
-                <span>启用规则</span>
-                <strong>{{ dashboard.activeRuleCount }}</strong>
-                <small>居民端当前可上报的低碳行为</small>
-              </div>
-              <div class="metric-unit">
-                <span>待审核上报</span>
-                <strong>{{ dashboard.pendingReportCount }}</strong>
-                <small>需要人工确认的行为记录</small>
-              </div>
-              <div class="metric-unit">
-                <span>待处理订单</span>
-                <strong>{{ dashboard.pendingOrderCount }}</strong>
-                <small>待履约或退款的兑换订单</small>
-              </div>
-            </div>
+    <AdminUsersSection
+      v-if="activeSection === 'users'"
+      :users="users"
+      :paged-users="pagedUsers"
+      :users-page-size="usersPageSize"
+      :users-page="usersPage"
+      :user-dialog-open="userDialogOpen"
+      :user-form="userForm"
+      :user-form-errors="userFormErrors"
+      @update:usersPage="usersPage = $event"
+      @create-user="openCreateUserDialog"
+      @edit-user="openEditUserDialog"
+      @delete-user="deleteUser"
+      @close-user-dialog="closeUserDialog"
+      @submit-user-dialog="submitUserDialog"
+      @clear-user-field-error="clearUserFieldError"
+    />
 
-            <div class="workspace-grid-2">
-              <div class="workspace-surface">
-                <span class="workspace-kicker">Today</span>
-                <h3>今日运营脉搏</h3>
-                <div class="workspace-list">
-                  <article class="workspace-list-item">
-                    <div>
-                      <strong>今日提交上报</strong>
-                      <p>衡量社区参与热度的最直接指标。</p>
-                    </div>
-                    <span class="badge">{{ dashboard.todaySubmittedReports }}</span>
-                  </article>
-                  <article class="workspace-list-item">
-                    <div>
-                      <strong>今日通过上报</strong>
-                      <p>反映审核效率与激励发放节奏。</p>
-                    </div>
-                    <span class="badge">{{ dashboard.todayApprovedReports }}</span>
-                  </article>
-                  <article class="workspace-list-item">
-                    <div>
-                      <strong>今日兑换订单</strong>
-                      <p>衡量积分体系是否形成持续激励。</p>
-                    </div>
-                    <span class="badge warn">{{ dashboard.todayRedeemOrders }}</span>
-                  </article>
-                  <article class="workspace-list-item">
-                    <div>
-                      <strong>今日完成订单</strong>
-                      <p>体现后端履约处理能力。</p>
-                    </div>
-                    <span class="badge">{{ dashboard.todayCompletedOrders }}</span>
-                  </article>
-                </div>
-              </div>
+    <AdminRulesSection
+      v-if="activeSection === 'rules'"
+      :rules="rules"
+      :paged-rules="pagedRules"
+      :rules-page-size="rulesPageSize"
+      :rules-page="rulesPage"
+      :rule-dialog-open="ruleDialogOpen"
+      :rule-form="ruleForm"
+      :rule-form-errors="ruleFormErrors"
+      @update:rulesPage="rulesPage = $event"
+      @create-rule="openCreateRuleDialog"
+      @edit-rule="openEditRuleDialog"
+      @delete-rule="deleteRule"
+      @close-rule-dialog="closeRuleDialog"
+      @submit-rule-dialog="submitRuleDialog"
+      @clear-rule-field-error="clearRuleFieldError"
+    />
 
-              <div class="workspace-surface">
-                <span class="workspace-kicker">Resources</span>
-                <h3>资源概况</h3>
-                <p>从库存与积分角度快速判断运营是否需要补货或调整激励策略。</p>
-                <div class="workspace-inline-stats">
-                  <div class="stat">
-                    <span>居民总积分</span>
-                    <strong>{{ dashboard.totalResidentPoints }}</strong>
-                  </div>
-                  <div class="stat">
-                    <span>累计减碳量</span>
-                    <strong>{{ Number(dashboard.totalCarbonReduction || 0).toFixed(2) }}</strong>
-                  </div>
-                  <div class="stat">
-                    <span>上架商品</span>
-                    <strong>{{ dashboard.enabledItemCount }}</strong>
-                  </div>
-                  <div class="stat">
-                    <span>总库存</span>
-                    <strong>{{ dashboard.enabledItemStock }}</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
+    <AdminAuditsSection
+      v-if="activeSection === 'audits'"
+      :pending-reports="pendingReports"
+      :paged-pending-reports="pagedPendingReports"
+      :pending-reports-page-size="pendingReportsPageSize"
+      :pending-reports-page="pendingReportsPage"
+      :resolve-image-url="resolveImageUrl"
+      :fmt="fmt"
+      @update:pendingReportsPage="pendingReportsPage = $event"
+      @open-image="openImage"
+      @audit="audit"
+    />
 
-    <section v-if="activeSection === 'users'" class="workspace-pane">
-            <div class="pane-head">
-              <div>
-                <span class="workspace-kicker">Users</span>
-                <h2>用户管理</h2>
-                <p>创建居民与管理员账号，并对昵称、角色与密码进行维护。</p>
-              </div>
-              <div class="workspace-actions">
-                <span class="badge">{{ users.length }} 个账号</span>
-                <button class="btn" @click="openCreateUserDialog">新增用户</button>
-              </div>
-            </div>
+    <AdminItemsSection
+      v-if="activeSection === 'items'"
+      :items="items"
+      :paged-items="pagedItems"
+      :items-page-size="itemsPageSize"
+      :items-page="itemsPage"
+      :enabled-item-count="enabledItemCount"
+      :total-item-stock="totalItemStock"
+      :item-dialog-open="itemDialogOpen"
+      :item-form="itemForm"
+      :item-form-errors="itemFormErrors"
+      @update:itemsPage="itemsPage = $event"
+      @create-item="openCreateItemDialog"
+      @edit-item="openEditItemDialog"
+      @delete-item="deleteItem"
+      @close-item-dialog="closeItemDialog"
+      @submit-item-dialog="submitItemDialog"
+      @clear-item-field-error="clearItemFieldError"
+    />
 
-            <div class="table-wrap">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>用户名</th>
-                    <th>昵称</th>
-                    <th>角色</th>
-                    <th>积分</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="!pagedUsers.length">
-                    <td colspan="6" class="workspace-table-empty">暂无用户数据</td>
-                  </tr>
-                  <tr v-for="u in pagedUsers" :key="u.id">
-                    <td>{{ u.id }}</td>
-                    <td>{{ u.username }}</td>
-                    <td>{{ u.nickname }}</td>
-                    <td>{{ u.role }}</td>
-                    <td>{{ u.totalPoints }}</td>
-                    <td>
-                      <div class="workspace-actions admin-mini-actions">
-                        <button class="btn secondary" @click="openEditUserDialog(u)">编辑</button>
-                        <button class="btn danger" @click="deleteUser(u.id)">删除</button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <AppPagination
-              v-if="users.length > usersPageSize"
-              :current-page="usersPage"
-              :total-items="users.length"
-              :page-size="usersPageSize"
-              @change="usersPage = $event"
-            />
-
-            <div v-if="userDialogOpen" class="workspace-modal-mask" @click.self="closeUserDialog">
-              <section class="workspace-modal-card">
-                <header class="workspace-modal-head">
-                  <div>
-                    <span class="workspace-kicker">User</span>
-                    <h3>{{ userForm.id ? '编辑用户' : '新增用户' }}</h3>
-                  </div>
-                  <button class="workspace-modal-close" type="button" aria-label="关闭弹窗" @click="closeUserDialog">×</button>
-                </header>
-
-                <div class="workspace-modal-body">
-                  <div class="workspace-form-grid">
-                    <label class="field">
-                      <span class="field-label">登录用户名</span>
-                      <input
-                        v-model.trim="userForm.username"
-                        class="input"
-                        :class="{ 'has-error': userFormErrors.username }"
-                        placeholder="例如：resident_01"
-                        @input="clearUserFieldError('username')"
-                      />
-                      <span v-if="userFormErrors.username" class="field-error-text">{{ userFormErrors.username }}</span>
-                    </label>
-                    <label class="field">
-                      <span class="field-label">用户昵称</span>
-                      <input
-                        v-model.trim="userForm.nickname"
-                        class="input"
-                        :class="{ 'has-error': userFormErrors.nickname }"
-                        placeholder="例如：张三"
-                        @input="clearUserFieldError('nickname')"
-                      />
-                      <span v-if="userFormErrors.nickname" class="field-error-text">{{ userFormErrors.nickname }}</span>
-                    </label>
-                  </div>
-
-                  <div class="workspace-form-grid">
-                    <label class="field">
-                      <span class="field-label">登录密码</span>
-                      <input
-                        v-model.trim="userForm.password"
-                        class="input"
-                        :class="{ 'has-error': userFormErrors.password }"
-                        :placeholder="userForm.id ? '留空表示不修改密码' : '至少 6 位'"
-                        @input="clearUserFieldError('password')"
-                      />
-                      <span v-if="userFormErrors.password" class="field-error-text">{{ userFormErrors.password }}</span>
-                    </label>
-                    <label class="field">
-                      <span class="field-label">角色</span>
-                      <select
-                        v-model="userForm.role"
-                        class="select"
-                        :class="{ 'has-error': userFormErrors.role }"
-                        @change="clearUserFieldError('role')"
-                      >
-                        <option value="RESIDENT">居民（RESIDENT）</option>
-                        <option value="ADMIN">管理员（ADMIN）</option>
-                      </select>
-                      <span v-if="userFormErrors.role" class="field-error-text">{{ userFormErrors.role }}</span>
-                    </label>
-                  </div>
-                </div>
-
-                <footer class="workspace-actions workspace-modal-actions">
-                  <button class="btn" type="button" @click="submitUserDialog">
-                    {{ userForm.id ? '保存更新' : '确认新增' }}
-                  </button>
-                  <button class="btn secondary" type="button" @click="closeUserDialog">取消</button>
-                </footer>
-              </section>
-            </div>
-          </section>
-
-    <section v-if="activeSection === 'rules'" class="workspace-pane">
-            <div class="pane-head">
-              <div>
-                <span class="workspace-kicker">Rules</span>
-                <h2>行为规则配置</h2>
-                <p>维护积分、减碳量、日上限与启停状态，形成居民端的激励逻辑。</p>
-              </div>
-              <div class="workspace-actions">
-                <span class="badge">{{ rules.length }} 条规则</span>
-                <button class="btn" @click="openCreateRuleDialog">新增规则</button>
-              </div>
-            </div>
-
-            <div class="table-wrap">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>名称</th>
-                    <th>积分</th>
-                    <th>减碳</th>
-                    <th>日限</th>
-                    <th>状态</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="!pagedRules.length">
-                    <td colspan="7" class="workspace-table-empty">暂无规则数据</td>
-                  </tr>
-                  <tr v-for="r in pagedRules" :key="r.id">
-                    <td>{{ r.id }}</td>
-                    <td>{{ r.name }}</td>
-                    <td>{{ r.pointsPerAction }}</td>
-                    <td>{{ r.carbonReductionPerAction }}</td>
-                    <td>{{ r.dailyLimit }}</td>
-                    <td><span :class="r.active ? 'badge' : 'badge err'">{{ r.active ? '启用' : '停用' }}</span></td>
-                    <td>
-                      <div class="workspace-actions admin-mini-actions">
-                        <button class="btn secondary" @click="openEditRuleDialog(r)">编辑</button>
-                        <button class="btn danger" @click="deleteRule(r.id)">删除</button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <AppPagination
-              v-if="rules.length > rulesPageSize"
-              :current-page="rulesPage"
-              :total-items="rules.length"
-              :page-size="rulesPageSize"
-              @change="rulesPage = $event"
-            />
-
-            <div v-if="ruleDialogOpen" class="workspace-modal-mask" @click.self="closeRuleDialog">
-              <section class="workspace-modal-card">
-                <header class="workspace-modal-head">
-                  <div>
-                    <span class="workspace-kicker">Rule</span>
-                    <h3>{{ ruleForm.id ? '编辑规则' : '新增规则' }}</h3>
-                  </div>
-                  <button class="workspace-modal-close" type="button" aria-label="关闭弹窗" @click="closeRuleDialog">×</button>
-                </header>
-
-                <div class="workspace-modal-body">
-                  <div class="workspace-form-grid">
-                    <label class="field">
-                      <span class="field-label">规则名称</span>
-                      <input
-                        v-model.trim="ruleForm.name"
-                        class="input"
-                        :class="{ 'has-error': ruleFormErrors.name }"
-                        placeholder="例如：步行或骑行出行"
-                        @input="clearRuleFieldError('name')"
-                      />
-                      <span v-if="ruleFormErrors.name" class="field-error-text">{{ ruleFormErrors.name }}</span>
-                    </label>
-                    <label class="field">
-                      <span class="field-label">单次奖励积分</span>
-                      <input
-                        v-model.number="ruleForm.pointsPerAction"
-                        type="number"
-                        min="0"
-                        class="input"
-                        :class="{ 'has-error': ruleFormErrors.pointsPerAction }"
-                        @input="clearRuleFieldError('pointsPerAction')"
-                      />
-                      <span v-if="ruleFormErrors.pointsPerAction" class="field-error-text">{{ ruleFormErrors.pointsPerAction }}</span>
-                    </label>
-                  </div>
-
-                  <div class="workspace-form-grid">
-                    <label class="field">
-                      <span class="field-label">单次减碳量（kg）</span>
-                      <input
-                        v-model.number="ruleForm.carbonReductionPerAction"
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        class="input"
-                        :class="{ 'has-error': ruleFormErrors.carbonReductionPerAction }"
-                        @input="clearRuleFieldError('carbonReductionPerAction')"
-                      />
-                      <span v-if="ruleFormErrors.carbonReductionPerAction" class="field-error-text">{{ ruleFormErrors.carbonReductionPerAction }}</span>
-                    </label>
-                    <label class="field">
-                      <span class="field-label">每日上报上限</span>
-                      <input
-                        v-model.number="ruleForm.dailyLimit"
-                        type="number"
-                        min="1"
-                        class="input"
-                        :class="{ 'has-error': ruleFormErrors.dailyLimit }"
-                        @input="clearRuleFieldError('dailyLimit')"
-                      />
-                      <span v-if="ruleFormErrors.dailyLimit" class="field-error-text">{{ ruleFormErrors.dailyLimit }}</span>
-                    </label>
-                  </div>
-
-                  <div class="workspace-form-grid">
-                    <label class="field">
-                      <span class="field-label">规则状态</span>
-                      <select v-model="ruleForm.active" class="select">
-                        <option :value="true">启用</option>
-                        <option :value="false">停用</option>
-                      </select>
-                    </label>
-                    <div class="field">
-                      <span class="field-label">口径提醒</span>
-                      <span class="field-help">建议写清居民需要提供的凭证与实际行为口径。</span>
-                    </div>
-                  </div>
-
-                  <label class="field">
-                    <span class="field-label">规则说明</span>
-                    <textarea
-                      v-model.trim="ruleForm.description"
-                      class="textarea"
-                      placeholder="例如：通勤使用步行或骑行方式，并上传简要说明与凭证图片。"
-                    ></textarea>
-                  </label>
-                </div>
-
-                <footer class="workspace-actions workspace-modal-actions">
-                  <button class="btn" type="button" @click="submitRuleDialog">
-                    {{ ruleForm.id ? '保存更新' : '确认新增' }}
-                  </button>
-                  <button class="btn secondary" type="button" @click="closeRuleDialog">取消</button>
-                </footer>
-              </section>
-            </div>
-          </section>
-
-    <section v-if="activeSection === 'audits'" class="workspace-pane">
-            <div class="pane-head">
-              <div>
-                <span class="workspace-kicker">Audit</span>
-                <h2>待审核上报</h2>
-                <p>集中查看居民提交的行为说明、凭证图片与时间，快速完成通过或驳回。</p>
-              </div>
-              <span class="badge warn">{{ pendingReports.length }} 条待处理</span>
-            </div>
-
-            <div class="table-wrap">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>居民</th>
-                    <th>规则</th>
-                    <th>次数</th>
-                    <th>凭证说明</th>
-                    <th>凭证图片</th>
-                    <th>提交时间</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="!pagedPendingReports.length">
-                    <td colspan="8" class="workspace-table-empty">当前没有待审核上报</td>
-                  </tr>
-                  <tr v-for="row in pagedPendingReports" :key="row.id">
-                    <td>{{ row.id }}</td>
-                    <td>{{ row.nickname }}</td>
-                    <td>{{ row.ruleName }}</td>
-                    <td>{{ row.quantity }}</td>
-                    <td>{{ row.proofText || '-' }}</td>
-                    <td>
-                      <img
-                        v-if="row.proofImageUrl"
-                        :src="resolveImageUrl(row.proofImageUrl)"
-                        class="media-thumb"
-                        alt="凭证图片"
-                        @click="openImage(resolveImageUrl(row.proofImageUrl))"
-                      />
-                      <span v-else>-</span>
-                    </td>
-                    <td>{{ fmt(row.submittedAt) }}</td>
-                    <td>
-                      <div class="workspace-actions admin-mini-actions">
-                        <button class="btn" @click="audit(row.id, true)">通过</button>
-                        <button class="btn danger" @click="audit(row.id, false)">驳回</button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <AppPagination
-              v-if="pendingReports.length > pendingReportsPageSize"
-              :current-page="pendingReportsPage"
-              :total-items="pendingReports.length"
-              :page-size="pendingReportsPageSize"
-              @change="pendingReportsPage = $event"
-            />
-          </section>
-
-    <section v-if="activeSection === 'items'" class="workspace-pane">
-            <div class="pane-head">
-              <div>
-                <span class="workspace-kicker">Mall</span>
-                <h2>商城商品管理</h2>
-                <p>在统一工作区里维护商品、库存和上下架状态，让兑换端与库存治理同步更新。</p>
-              </div>
-              <div class="workspace-actions">
-                <div class="workspace-inline-stats admin-items-summary">
-                  <div class="stat">
-                    <span>商品总数</span>
-                    <strong>{{ items.length }}</strong>
-                  </div>
-                  <div class="stat">
-                    <span>上架商品</span>
-                    <strong>{{ enabledItemCount }}</strong>
-                  </div>
-                  <div class="stat">
-                    <span>总库存</span>
-                    <strong>{{ totalItemStock }}</strong>
-                  </div>
-                </div>
-                <button class="btn" @click="openCreateItemDialog">新增商品</button>
-              </div>
-            </div>
-
-            <div class="table-wrap">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>名称</th>
-                    <th>单价</th>
-                    <th>库存</th>
-                    <th>状态</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="!pagedItems.length">
-                    <td colspan="6" class="workspace-table-empty">暂无商品数据</td>
-                  </tr>
-                  <tr v-for="i in pagedItems" :key="i.id">
-                    <td>{{ i.id }}</td>
-                    <td>{{ i.name }}</td>
-                    <td>{{ i.pointsCost }}</td>
-                    <td>{{ i.stock }}</td>
-                    <td><span :class="i.enabled ? 'badge' : 'badge err'">{{ i.enabled ? '上架' : '下架' }}</span></td>
-                    <td>
-                      <div class="workspace-actions admin-mini-actions">
-                        <button class="btn secondary" @click="openEditItemDialog(i)">编辑</button>
-                        <button class="btn danger" @click="deleteItem(i.id)">删除</button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <AppPagination
-              v-if="items.length > itemsPageSize"
-              :current-page="itemsPage"
-              :total-items="items.length"
-              :page-size="itemsPageSize"
-              @change="itemsPage = $event"
-            />
-
-            <div v-if="itemDialogOpen" class="workspace-modal-mask" @click.self="closeItemDialog">
-              <section class="workspace-modal-card">
-                <header class="workspace-modal-head">
-                  <div>
-                    <span class="workspace-kicker">Item</span>
-                    <h3>{{ itemForm.id ? '编辑商品' : '新增商品' }}</h3>
-                  </div>
-                  <button class="workspace-modal-close" type="button" aria-label="关闭弹窗" @click="closeItemDialog">×</button>
-                </header>
-
-                <div class="workspace-modal-body">
-                  <div class="workspace-form-grid">
-                    <label class="field">
-                      <span class="field-label">商品名称</span>
-                      <input
-                        v-model.trim="itemForm.name"
-                        class="input"
-                        :class="{ 'has-error': itemFormErrors.name }"
-                        placeholder="例如：环保帆布袋"
-                        @input="clearItemFieldError('name')"
-                      />
-                      <span v-if="itemFormErrors.name" class="field-error-text">{{ itemFormErrors.name }}</span>
-                    </label>
-                    <label class="field">
-                      <span class="field-label">兑换积分单价</span>
-                      <input
-                        v-model.number="itemForm.pointsCost"
-                        type="number"
-                        min="1"
-                        class="input"
-                        :class="{ 'has-error': itemFormErrors.pointsCost }"
-                        @input="clearItemFieldError('pointsCost')"
-                      />
-                      <span v-if="itemFormErrors.pointsCost" class="field-error-text">{{ itemFormErrors.pointsCost }}</span>
-                    </label>
-                  </div>
-
-                  <div class="workspace-form-grid">
-                    <label class="field">
-                      <span class="field-label">库存数量</span>
-                      <input
-                        v-model.number="itemForm.stock"
-                        type="number"
-                        min="0"
-                        class="input"
-                        :class="{ 'has-error': itemFormErrors.stock }"
-                        @input="clearItemFieldError('stock')"
-                      />
-                      <span v-if="itemFormErrors.stock" class="field-error-text">{{ itemFormErrors.stock }}</span>
-                    </label>
-                    <label class="field">
-                      <span class="field-label">上架状态</span>
-                      <select v-model="itemForm.enabled" class="select">
-                        <option :value="true">上架</option>
-                        <option :value="false">下架</option>
-                      </select>
-                    </label>
-                  </div>
-
-                  <label class="field">
-                    <span class="field-label">商品说明</span>
-                    <textarea v-model.trim="itemForm.description" class="textarea" placeholder="例如：适合居民日常重复使用的环保生活用品。"></textarea>
-                  </label>
-                </div>
-
-                <footer class="workspace-actions workspace-modal-actions">
-                  <button class="btn" type="button" @click="submitItemDialog">
-                    {{ itemForm.id ? '保存更新' : '确认新增' }}
-                  </button>
-                  <button class="btn secondary" type="button" @click="closeItemDialog">取消</button>
-                </footer>
-              </section>
-            </div>
-          </section>
-
-    <section v-if="activeSection === 'orders'" class="workspace-pane">
-            <div class="pane-head">
-              <div>
-                <span class="workspace-kicker">Orders</span>
-                <h2>兑换订单管理</h2>
-                <p>统一处理履约与退款，避免订单状态长时间停留在待处理。</p>
-              </div>
-              <span class="badge">{{ orders.length }} 笔订单</span>
-            </div>
-
-            <div class="table-wrap">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>居民</th>
-                    <th>商品</th>
-                    <th>数量</th>
-                    <th>积分</th>
-                    <th>状态</th>
-                    <th>创建时间</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="!pagedOrders.length">
-                    <td colspan="8" class="workspace-table-empty">暂无订单数据</td>
-                  </tr>
-                  <tr v-for="o in pagedOrders" :key="o.id">
-                    <td>{{ o.id }}</td>
-                    <td>{{ o.nickname }}</td>
-                    <td>{{ o.itemName }}</td>
-                    <td>{{ o.quantity }}</td>
-                    <td>{{ o.totalPoints }}</td>
-                    <td><span :class="badgeClass(o.status)">{{ formatStatusLabel(o.status) }}</span></td>
-                    <td>{{ fmt(o.createdAt) }}</td>
-                    <td>
-                      <div v-if="o.status === 'PENDING'" class="workspace-actions admin-mini-actions">
-                        <button class="btn" @click="updateOrder(o.id, 'COMPLETED')">完成</button>
-                        <button class="btn danger" @click="updateOrder(o.id, 'CANCELLED')">取消并退款</button>
-                      </div>
-                      <span v-else class="admin-order-locked">已结束</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <AppPagination
-              v-if="orders.length > ordersPageSize"
-              :current-page="ordersPage"
-              :total-items="orders.length"
-              :page-size="ordersPageSize"
-              @change="ordersPage = $event"
-            />
-          </section>
+    <AdminOrdersSection
+      v-if="activeSection === 'orders'"
+      :orders="orders"
+      :paged-orders="pagedOrders"
+      :orders-page-size="ordersPageSize"
+      :orders-page="ordersPage"
+      :badge-class="badgeClass"
+      :format-status-label="formatStatusLabel"
+      :fmt="fmt"
+      @update:ordersPage="ordersPage = $event"
+      @update-order="updateOrder"
+    />
 
     <ProfileCenterPanel
       v-if="activeSection === 'profile'"
@@ -720,13 +171,18 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
+import AdminAuditsSection from '../components/admin/sections/AdminAuditsSection.vue'
+import AdminItemsSection from '../components/admin/sections/AdminItemsSection.vue'
+import AdminOrdersSection from '../components/admin/sections/AdminOrdersSection.vue'
+import AdminOverviewSection from '../components/admin/sections/AdminOverviewSection.vue'
+import AdminRulesSection from '../components/admin/sections/AdminRulesSection.vue'
+import AdminUsersSection from '../components/admin/sections/AdminUsersSection.vue'
 import { useAdminPage } from '../composables/useAdminPage'
 import { usePagination } from '../composables/shared/usePagination'
 import { useProfileCenter } from '../composables/shared/useProfileCenter'
 import { useWorkspaceState } from '../composables/workspace/useWorkspaceState'
 import { updateAdminProfile, uploadImage } from '../services/adminService'
-import AppPagination from '../components/AppPagination.vue'
 import ProfileCenterPanel from '../components/profile/ProfileCenterPanel.vue'
 import WorkspaceShell from '../components/workspace/WorkspaceShell.vue'
 import adminSections from '../constants/adminSections'
@@ -736,7 +192,6 @@ const {
   sectionSearchKeyword,
   setSectionSearchInput,
   filteredSidebarSections,
-  openTabs,
   activeSection,
   openTabSections,
   activeSectionMeta,
@@ -1061,4 +516,4 @@ const { currentPage: itemsPage, pagedItems: pagedItems } = usePagination(items, 
 const { currentPage: ordersPage, pagedItems: pagedOrders } = usePagination(orders, ordersPageSize)
 </script>
 
-<style scoped src="../styles/admin-view.css"></style>
+<style src="../styles/admin-view.css"></style>
