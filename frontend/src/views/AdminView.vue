@@ -722,6 +722,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { useAdminPage } from '../composables/useAdminPage'
+import { usePagination } from '../composables/shared/usePagination'
 import { useProfileCenter } from '../composables/shared/useProfileCenter'
 import { useWorkspaceState } from '../composables/workspace/useWorkspaceState'
 import { updateAdminProfile, uploadImage } from '../services/adminService'
@@ -1050,49 +1051,14 @@ const pendingReportsPageSize = 5
 const itemsPageSize = 5
 const ordersPageSize = 5
 
-const usersPage = ref(1)
-const rulesPage = ref(1)
-const pendingReportsPage = ref(1)
-const itemsPage = ref(1)
-const ordersPage = ref(1)
-
-function clampPage(pageRef, totalItems, pageSize) {
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
-  if (pageRef.value > totalPages) {
-    pageRef.value = totalPages
-  }
-}
-
-const pagedUsers = computed(() => {
-  const start = (usersPage.value - 1) * usersPageSize
-  return users.value.slice(start, start + usersPageSize)
-})
-
-const pagedRules = computed(() => {
-  const start = (rulesPage.value - 1) * rulesPageSize
-  return rules.value.slice(start, start + rulesPageSize)
-})
-
-const pagedPendingReports = computed(() => {
-  const start = (pendingReportsPage.value - 1) * pendingReportsPageSize
-  return pendingReports.value.slice(start, start + pendingReportsPageSize)
-})
-
-const pagedItems = computed(() => {
-  const start = (itemsPage.value - 1) * itemsPageSize
-  return items.value.slice(start, start + itemsPageSize)
-})
-
-const pagedOrders = computed(() => {
-  const start = (ordersPage.value - 1) * ordersPageSize
-  return orders.value.slice(start, start + ordersPageSize)
-})
-
-watch(() => users.value.length, (value) => clampPage(usersPage, value, usersPageSize), { immediate: true })
-watch(() => rules.value.length, (value) => clampPage(rulesPage, value, rulesPageSize), { immediate: true })
-watch(() => pendingReports.value.length, (value) => clampPage(pendingReportsPage, value, pendingReportsPageSize), { immediate: true })
-watch(() => items.value.length, (value) => clampPage(itemsPage, value, itemsPageSize), { immediate: true })
-watch(() => orders.value.length, (value) => clampPage(ordersPage, value, ordersPageSize), { immediate: true })
+const { currentPage: usersPage, pagedItems: pagedUsers } = usePagination(users, usersPageSize)
+const { currentPage: rulesPage, pagedItems: pagedRules } = usePagination(rules, rulesPageSize)
+const { currentPage: pendingReportsPage, pagedItems: pagedPendingReports } = usePagination(
+  pendingReports,
+  pendingReportsPageSize
+)
+const { currentPage: itemsPage, pagedItems: pagedItems } = usePagination(items, itemsPageSize)
+const { currentPage: ordersPage, pagedItems: pagedOrders } = usePagination(orders, ordersPageSize)
 </script>
 
 <style scoped src="../styles/admin-view.css"></style>

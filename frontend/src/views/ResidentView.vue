@@ -526,6 +526,7 @@ import { LabelLayout, UniversalTransition } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
 import ProfileCenterPanel from '../components/profile/ProfileCenterPanel.vue'
 import { useResidentPage } from '../composables/useResidentPage'
+import { usePagination } from '../composables/shared/usePagination'
 import { useProfileCenter } from '../composables/shared/useProfileCenter'
 import { useWorkspaceState } from '../composables/workspace/useWorkspaceState'
 import { updateResidentProfile, uploadImage } from '../services/residentService'
@@ -675,45 +676,15 @@ const ledgerPageSize = 5
 const itemsPageSize = 4
 const ordersPageSize = 5
 
-const leaderboardPage = ref(1)
-const reportsPage = ref(1)
-const ledgerPage = ref(1)
-const itemsPage = ref(1)
-const ordersPage = ref(1)
-
-function clampPage(pageRef, totalItems, pageSize) {
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
-  if (pageRef.value > totalPages) {
-    pageRef.value = totalPages
-  }
-}
-
-const leaderboardStartIndex = computed(() => (leaderboardPage.value - 1) * leaderboardPageSize)
-const pagedLeaderboard = computed(() =>
-  leaderboard.value.slice(leaderboardStartIndex.value, leaderboardStartIndex.value + leaderboardPageSize)
-)
-const pagedReports = computed(() => {
-  const start = (reportsPage.value - 1) * reportsPageSize
-  return reports.value.slice(start, start + reportsPageSize)
-})
-const pagedLedger = computed(() => {
-  const start = (ledgerPage.value - 1) * ledgerPageSize
-  return ledger.value.slice(start, start + ledgerPageSize)
-})
-const pagedItems = computed(() => {
-  const start = (itemsPage.value - 1) * itemsPageSize
-  return items.value.slice(start, start + itemsPageSize)
-})
-const pagedOrders = computed(() => {
-  const start = (ordersPage.value - 1) * ordersPageSize
-  return orders.value.slice(start, start + ordersPageSize)
-})
-
-watch(() => leaderboard.value.length, (value) => clampPage(leaderboardPage, value, leaderboardPageSize), { immediate: true })
-watch(() => reports.value.length, (value) => clampPage(reportsPage, value, reportsPageSize), { immediate: true })
-watch(() => ledger.value.length, (value) => clampPage(ledgerPage, value, ledgerPageSize), { immediate: true })
-watch(() => items.value.length, (value) => clampPage(itemsPage, value, itemsPageSize), { immediate: true })
-watch(() => orders.value.length, (value) => clampPage(ordersPage, value, ordersPageSize), { immediate: true })
+const {
+  currentPage: leaderboardPage,
+  startIndex: leaderboardStartIndex,
+  pagedItems: pagedLeaderboard
+} = usePagination(leaderboard, leaderboardPageSize)
+const { currentPage: reportsPage, pagedItems: pagedReports } = usePagination(reports, reportsPageSize)
+const { currentPage: ledgerPage, pagedItems: pagedLedger } = usePagination(ledger, ledgerPageSize)
+const { currentPage: itemsPage, pagedItems: pagedItems } = usePagination(items, itemsPageSize)
+const { currentPage: ordersPage, pagedItems: pagedOrders } = usePagination(orders, ordersPageSize)
 
 const behaviorChartRef = ref(null)
 let behaviorChart = null
