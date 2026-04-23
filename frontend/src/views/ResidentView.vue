@@ -42,9 +42,6 @@
       :profile="profile"
       :reports="reports"
       :items="items"
-      :behavior-total-count="behaviorTotalCount"
-      :has-behavior-ratio-data="hasBehaviorRatioData"
-      :set-behavior-chart-ref="setBehaviorChartRef"
       :paged-leaderboard="pagedLeaderboard"
       :leaderboard-start-index="leaderboardStartIndex"
       :leaderboard="leaderboard"
@@ -160,12 +157,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { use, init } from 'echarts/core'
-import { PieChart } from 'echarts/charts'
-import { TooltipComponent, LegendComponent } from 'echarts/components'
-import { LabelLayout, UniversalTransition } from 'echarts/features'
-import { CanvasRenderer } from 'echarts/renderers'
+import { ref } from 'vue'
 import ProfileCenterPanel from '../components/profile/ProfileCenterPanel.vue'
 import ResidentLedgerSection from '../components/resident/sections/ResidentLedgerSection.vue'
 import ResidentMallSection from '../components/resident/sections/ResidentMallSection.vue'
@@ -181,14 +173,11 @@ import { updateResidentProfile, uploadImage } from '../services/residentService'
 import WorkspaceShell from '../components/workspace/WorkspaceShell.vue'
 import residentSections from '../constants/residentSections'
 
-use([PieChart, TooltipComponent, LegendComponent, LabelLayout, UniversalTransition, CanvasRenderer])
-
 const workspaceStateStorageKey = 'lowcarbon:resident-workspace:v1'
 const {
   sectionSearchKeyword,
   setSectionSearchInput,
   filteredSidebarSections,
-  openTabs,
   activeSection,
   openTabSections,
   activeSectionMeta,
@@ -201,15 +190,10 @@ const {
   sections: residentSections
 })
 const avatarMenuOpen = ref(false)
-const behaviorChartRef = ref(null)
 
 function openProfileCenter() {
   openSection('profile')
   avatarMenuOpen.value = false
-}
-
-function setBehaviorChartRef(el) {
-  behaviorChartRef.value = el
 }
 
 const {
@@ -345,134 +329,6 @@ const { currentPage: reportsPage, pagedItems: pagedReports } = usePagination(rep
 const { currentPage: ledgerPage, pagedItems: pagedLedger } = usePagination(ledger, ledgerPageSize)
 const { currentPage: itemsPage, pagedItems: pagedItems } = usePagination(items, itemsPageSize)
 const { currentPage: ordersPage, pagedItems: pagedOrders } = usePagination(orders, ordersPageSize)
-let behaviorChart = null
-
-const behaviorRatioData = computed(() => {
-  const approvedRows = reports.value.filter((row) => row.status === 'APPROVED')
-  const sourceRows = approvedRows.length ? approvedRows : reports.value
-  const counter = new Map()
-
-  sourceRows.forEach((row) => {
-    const ruleName = row.ruleName || '其他行为'
-    const quantity = Number(row.quantity || 0)
-    counter.set(ruleName, (counter.get(ruleName) || 0) + quantity)
-  })
-
-  return Array.from(counter.entries())
-    .map(([name, value]) => ({ name, value }))
-    .filter((item) => item.value > 0)
-    .sort((a, b) => b.value - a.value)
-})
-
-const hasBehaviorRatioData = computed(() => behaviorRatioData.value.length > 0)
-const behaviorTotalCount = computed(() =>
-  behaviorRatioData.value.reduce((sum, item) => sum + Number(item.value || 0), 0)
-)
-
-function buildBehaviorChartOption() {
-  return {
-    color: ['#1d7a52', '#5db07f', '#9dd0a7', '#c7713f', '#e4b793', '#7aa7b0'],
-    tooltip: {
-      trigger: 'item',
-      formatter: '{b}<br/>次数：{c}（{d}%）'
-    },
-    legend: {
-      bottom: 0,
-      icon: 'circle',
-      textStyle: {
-        color: '#5d6f66'
-      }
-    },
-    series: [
-      {
-        name: '行为占比',
-        type: 'pie',
-        radius: ['40%', '68%'],
-        center: ['50%', '42%'],
-        itemStyle: {
-          borderColor: '#fffdf7',
-          borderWidth: 3
-        },
-        label: {
-          show: true,
-          formatter: '{d}%',
-          color: '#18322a',
-          fontWeight: 600
-        },
-        data: behaviorRatioData.value
-      }
-    ]
-  }
-}
-
-function renderBehaviorChart() {
-  if (!behaviorChartRef.value) return
-
-  if (behaviorChart && behaviorChart.getDom() !== behaviorChartRef.value) {
-    behaviorChart.dispose()
-    behaviorChart = null
-  }
-
-  if (!behaviorChart) {
-    behaviorChart = init(behaviorChartRef.value)
-  }
-
-  if (!hasBehaviorRatioData.value) {
-    behaviorChart.clear()
-    behaviorChart.setOption({
-      title: {
-        text: '暂无行为占比数据',
-        left: 'center',
-        top: 'middle',
-        textStyle: {
-          color: '#8a9a92',
-          fontSize: 14,
-          fontWeight: 500
-        }
-      }
-    })
-    return
-  }
-
-  behaviorChart.setOption(buildBehaviorChartOption(), true)
-}
-
-function resizeBehaviorChart() {
-  if (behaviorChart) {
-    behaviorChart.resize()
-  }
-}
-
-watch(
-  [behaviorRatioData, activeSection],
-  async () => {
-    if (activeSection.value !== 'overview') {
-      if (behaviorChart) {
-        behaviorChart.dispose()
-        behaviorChart = null
-      }
-      return
-    }
-    await nextTick()
-    renderBehaviorChart()
-    resizeBehaviorChart()
-  },
-  { deep: true }
-)
-
-onMounted(async () => {
-  await nextTick()
-  renderBehaviorChart()
-  window.addEventListener('resize', resizeBehaviorChart)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', resizeBehaviorChart)
-  if (behaviorChart) {
-    behaviorChart.dispose()
-    behaviorChart = null
-  }
-})
 </script>
 
 <style src="../styles/resident-view.css"></style>

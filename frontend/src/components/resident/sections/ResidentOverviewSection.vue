@@ -37,8 +37,10 @@
         <span class="workspace-kicker">Behavior Mix</span>
         <h3>低碳行为构成</h3>
         <p>优先展示已审核数据，如暂无审核记录则展示全部上报次数。</p>
-        <div v-if="!hasBehaviorRatioData" class="workspace-empty">暂无行为数据，提交上报后这里会自动生成行为分布。</div>
-        <div v-else :ref="setBehaviorChartRef" class="workspace-chart resident-chart"></div>
+        <BehaviorPieChart
+          :has-data="hasBehaviorRatioData"
+          :set-chart-ref="setChartRef"
+        />
       </div>
 
       <div class="workspace-surface">
@@ -73,9 +75,12 @@
 </template>
 
 <script setup>
+import { toRef } from 'vue'
 import AppPagination from '../../AppPagination.vue'
+import BehaviorPieChart from '../charts/BehaviorPieChart.vue'
+import { useBehaviorChart } from '../../../composables/resident/useBehaviorChart'
 
-defineProps({
+const props = defineProps({
   profile: {
     type: Object,
     required: true
@@ -87,18 +92,6 @@ defineProps({
   items: {
     type: Array,
     default: () => []
-  },
-  behaviorTotalCount: {
-    type: Number,
-    required: true
-  },
-  hasBehaviorRatioData: {
-    type: Boolean,
-    required: true
-  },
-  setBehaviorChartRef: {
-    type: Function,
-    default: null
   },
   pagedLeaderboard: {
     type: Array,
@@ -123,4 +116,7 @@ defineProps({
 })
 
 const emit = defineEmits(['update:leaderboardPage'])
+const { behaviorTotalCount, hasBehaviorRatioData, setChartRef } = useBehaviorChart(
+  toRef(props, 'reports')
+)
 </script>

@@ -33,29 +33,13 @@
         </label>
       </div>
 
-      <div v-if="selectedRule" class="workspace-panel">
-        <span class="workspace-kicker">Rule Summary</span>
-        <h3>{{ selectedRule.name }}</h3>
-        <p>{{ selectedRule.description || '当前规则暂无补充说明。' }}</p>
-        <div class="workspace-inline-stats">
-          <div class="stat">
-            <span>今日已用</span>
-            <strong>{{ todayUsedCount }} 次</strong>
-          </div>
-          <div class="stat">
-            <span>剩余额度</span>
-            <strong>{{ remainingQuota }} 次</strong>
-          </div>
-          <div class="stat">
-            <span>预计奖励</span>
-            <strong>+{{ estimatedPoints }} 分</strong>
-          </div>
-          <div class="stat">
-            <span>预计减碳</span>
-            <strong>{{ estimatedCarbon }} kg</strong>
-          </div>
-        </div>
-      </div>
+      <ReportRuleSummary
+        :selected-rule="selectedRule"
+        :today-used-count="todayUsedCount"
+        :remaining-quota="remainingQuota"
+        :estimated-points="estimatedPoints"
+        :estimated-carbon="estimatedCarbon"
+      />
 
       <div class="field">
         <span class="field-label">快捷次数</span>
@@ -108,39 +92,18 @@
           <input v-model.trim="assistForm.location" class="input" placeholder="例如：社区东门到地铁站" />
         </label>
 
-        <div v-if="isRoutePlannerVisible" class="workspace-panel">
-          <div class="pane-head">
-            <div>
-              <span class="workspace-kicker">Route Helper</span>
-              <h2>路线辅助选择</h2>
-              <p>地图上先选起点再选终点，系统会自动回填路线里程。</p>
-            </div>
-            <div class="workspace-actions">
-              <button class="btn secondary" type="button" @click="emit('locate-current-position')" :disabled="locatingCurrent">
-                {{ locatingCurrent ? '定位中...' : '使用当前位置' }}
-              </button>
-              <button class="btn ghost" type="button" @click="emit('reset-route-planner')">重选路线</button>
-            </div>
-          </div>
-
-          <div :ref="setMapContainerRef" class="workspace-map"></div>
-          <div class="workspace-inline-stats">
-            <div class="stat">
-              <span>起点</span>
-              <strong>{{ routeStartText }}</strong>
-            </div>
-            <div class="stat">
-              <span>终点</span>
-              <strong>{{ routeEndText }}</strong>
-            </div>
-            <div class="stat">
-              <span>路线里程</span>
-              <strong>{{ routeDistanceKm || '-' }} km</strong>
-            </div>
-          </div>
-          <div v-if="routeLoading" class="inline-message success">路线计算中，请稍候...</div>
-          <div v-if="routeError" class="inline-message error">{{ routeError }}</div>
-        </div>
+        <ReportRoutePlanner
+          v-if="isRoutePlannerVisible"
+          :set-map-container-ref="setMapContainerRef"
+          :locating-current="locatingCurrent"
+          :route-start-text="routeStartText"
+          :route-end-text="routeEndText"
+          :route-distance-km="routeDistanceKm"
+          :route-loading="routeLoading"
+          :route-error="routeError"
+          @locate-current-position="emit('locate-current-position')"
+          @reset-route-planner="emit('reset-route-planner')"
+        />
       </template>
 
       <label class="field">
@@ -152,35 +115,14 @@
         />
       </label>
 
-      <div class="workspace-grid-2">
-        <label class="field">
-          <span class="field-label">上传凭证图片</span>
-          <input
-            :ref="setImageInputRef"
-            type="file"
-            class="input proof-image-input"
-            accept="image/*"
-            @change="emit('proof-image-change', $event)"
-          />
-          <span class="field-help">支持 jpg / png / webp，单张建议控制在 5MB 以内。</span>
-        </label>
-
-        <div class="field">
-          <span class="field-label">图片预览</span>
-          <div class="workspace-upload-preview">
-            <img
-              v-if="proofImagePreviewUrl"
-              :src="proofImagePreviewUrl"
-              alt="凭证预览"
-              @click="emit('open-image', proofImagePreviewUrl)"
-            />
-            <div v-else class="workspace-empty">上传后会在这里显示预览</div>
-          </div>
-          <div class="workspace-actions">
-            <button class="btn secondary" type="button" @click="emit('clear-proof-image')" :disabled="uploadingImage">移除图片</button>
-          </div>
-        </div>
-      </div>
+      <ReportProofUploader
+        :set-image-input-ref="setImageInputRef"
+        :proof-image-preview-url="proofImagePreviewUrl"
+        :uploading-image="uploadingImage"
+        @proof-image-change="emit('proof-image-change', $event)"
+        @clear-proof-image="emit('clear-proof-image')"
+        @open-image="emit('open-image', $event)"
+      />
 
       <div v-if="uploadingImage" class="inline-message success">图片上传中，请稍候后再提交。</div>
 
@@ -213,6 +155,10 @@
 </template>
 
 <script setup>
+import ReportProofUploader from '../report/ReportProofUploader.vue'
+import ReportRoutePlanner from '../report/ReportRoutePlanner.vue'
+import ReportRuleSummary from '../report/ReportRuleSummary.vue'
+
 defineProps({
   rules: {
     type: Array,
