@@ -52,79 +52,6 @@
       :page-size="usersPageSize"
       @change="emit('update:usersPage', $event)"
     />
-
-    <div v-if="userDialogOpen" class="workspace-modal-mask" @click.self="emit('close-user-dialog')">
-      <section class="workspace-modal-card">
-        <header class="workspace-modal-head">
-          <div>
-            <span class="workspace-kicker">User</span>
-            <h3>{{ userForm.id ? '编辑用户' : '新增用户' }}</h3>
-          </div>
-          <button class="workspace-modal-close" type="button" aria-label="关闭弹窗" @click="emit('close-user-dialog')">×</button>
-        </header>
-
-        <div class="workspace-modal-body">
-          <div class="workspace-form-grid">
-            <label class="field">
-              <span class="field-label">登录用户名</span>
-              <input
-                v-model.trim="userForm.username"
-                class="input"
-                :class="{ 'has-error': userFormErrors.username }"
-                placeholder="例如：resident_01"
-                @input="emit('clear-user-field-error', 'username')"
-              />
-              <span v-if="userFormErrors.username" class="field-error-text">{{ userFormErrors.username }}</span>
-            </label>
-            <label class="field">
-              <span class="field-label">用户昵称</span>
-              <input
-                v-model.trim="userForm.nickname"
-                class="input"
-                :class="{ 'has-error': userFormErrors.nickname }"
-                placeholder="例如：张三"
-                @input="emit('clear-user-field-error', 'nickname')"
-              />
-              <span v-if="userFormErrors.nickname" class="field-error-text">{{ userFormErrors.nickname }}</span>
-            </label>
-          </div>
-
-          <div class="workspace-form-grid">
-            <label class="field">
-              <span class="field-label">登录密码</span>
-              <input
-                v-model.trim="userForm.password"
-                class="input"
-                :class="{ 'has-error': userFormErrors.password }"
-                :placeholder="userForm.id ? '留空表示不修改密码' : '至少 6 位'"
-                @input="emit('clear-user-field-error', 'password')"
-              />
-              <span v-if="userFormErrors.password" class="field-error-text">{{ userFormErrors.password }}</span>
-            </label>
-            <label class="field">
-              <span class="field-label">角色</span>
-              <select
-                v-model="userForm.role"
-                class="select"
-                :class="{ 'has-error': userFormErrors.role }"
-                @change="emit('clear-user-field-error', 'role')"
-              >
-                <option value="RESIDENT">居民（RESIDENT）</option>
-                <option value="ADMIN">管理员（ADMIN）</option>
-              </select>
-              <span v-if="userFormErrors.role" class="field-error-text">{{ userFormErrors.role }}</span>
-            </label>
-          </div>
-        </div>
-
-        <footer class="workspace-actions workspace-modal-actions">
-          <button class="btn" type="button" @click="emit('submit-user-dialog')">
-            {{ userForm.id ? '保存更新' : '确认新增' }}
-          </button>
-          <button class="btn secondary" type="button" @click="emit('close-user-dialog')">取消</button>
-        </footer>
-      </section>
-    </div>
   </section>
 </template>
 
@@ -147,18 +74,6 @@ defineProps({
   usersPage: {
     type: Number,
     required: true
-  },
-  userDialogOpen: {
-    type: Boolean,
-    default: false
-  },
-  userForm: {
-    type: Object,
-    required: true
-  },
-  userFormErrors: {
-    type: Object,
-    required: true
   }
 })
 
@@ -166,9 +81,6 @@ const emit = defineEmits([
   'update:usersPage',
   'create-user',
   'edit-user',
-  'delete-user',
-  'close-user-dialog',
-  'submit-user-dialog',
-  'clear-user-field-error'
+  'delete-user'
 ])
 </script>

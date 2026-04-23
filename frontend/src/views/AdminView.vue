@@ -77,16 +77,10 @@
       :paged-users="pagedUsers"
       :users-page-size="usersPageSize"
       :users-page="usersPage"
-      :user-dialog-open="userDialogOpen"
-      :user-form="userForm"
-      :user-form-errors="userFormErrors"
       @update:usersPage="usersPage = $event"
       @create-user="openCreateUserDialog"
       @edit-user="openEditUserDialog"
       @delete-user="deleteUser"
-      @close-user-dialog="closeUserDialog"
-      @submit-user-dialog="submitUserDialog"
-      @clear-user-field-error="clearUserFieldError"
     />
 
     <AdminRulesSection
@@ -95,16 +89,10 @@
       :paged-rules="pagedRules"
       :rules-page-size="rulesPageSize"
       :rules-page="rulesPage"
-      :rule-dialog-open="ruleDialogOpen"
-      :rule-form="ruleForm"
-      :rule-form-errors="ruleFormErrors"
       @update:rulesPage="rulesPage = $event"
       @create-rule="openCreateRuleDialog"
       @edit-rule="openEditRuleDialog"
       @delete-rule="deleteRule"
-      @close-rule-dialog="closeRuleDialog"
-      @submit-rule-dialog="submitRuleDialog"
-      @clear-rule-field-error="clearRuleFieldError"
     />
 
     <AdminAuditsSection
@@ -128,16 +116,10 @@
       :items-page="itemsPage"
       :enabled-item-count="enabledItemCount"
       :total-item-stock="totalItemStock"
-      :item-dialog-open="itemDialogOpen"
-      :item-form="itemForm"
-      :item-form-errors="itemFormErrors"
       @update:itemsPage="itemsPage = $event"
       @create-item="openCreateItemDialog"
       @edit-item="openEditItemDialog"
       @delete-item="deleteItem"
-      @close-item-dialog="closeItemDialog"
-      @submit-item-dialog="submitItemDialog"
-      @clear-item-field-error="clearItemFieldError"
     />
 
     <AdminOrdersSection
@@ -151,6 +133,27 @@
       :fmt="fmt"
       @update:ordersPage="ordersPage = $event"
       @update-order="updateOrder"
+    />
+
+    <UserDialog
+      :open="userDialogOpen"
+      :form="userForm"
+      @close="closeUserDialog"
+      @submit="submitUserDialog"
+    />
+
+    <RuleDialog
+      :open="ruleDialogOpen"
+      :form="ruleForm"
+      @close="closeRuleDialog"
+      @submit="submitRuleDialog"
+    />
+
+    <ItemDialog
+      :open="itemDialogOpen"
+      :form="itemForm"
+      @close="closeItemDialog"
+      @submit="submitItemDialog"
     />
 
     <ProfileCenterPanel
@@ -171,13 +174,17 @@
 </template>
 
 <script setup>
-import { reactive, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import AdminAuditsSection from '../components/admin/sections/AdminAuditsSection.vue'
+import ItemDialog from '../components/admin/dialogs/ItemDialog.vue'
 import AdminItemsSection from '../components/admin/sections/AdminItemsSection.vue'
 import AdminOrdersSection from '../components/admin/sections/AdminOrdersSection.vue'
 import AdminOverviewSection from '../components/admin/sections/AdminOverviewSection.vue'
 import AdminRulesSection from '../components/admin/sections/AdminRulesSection.vue'
 import AdminUsersSection from '../components/admin/sections/AdminUsersSection.vue'
+import RuleDialog from '../components/admin/dialogs/RuleDialog.vue'
+import UserDialog from '../components/admin/dialogs/UserDialog.vue'
+import { useAdminDialogs } from '../composables/admin/useAdminDialogs'
 import { useAdminPage } from '../composables/useAdminPage'
 import { usePagination } from '../composables/shared/usePagination'
 import { useProfileCenter } from '../composables/shared/useProfileCenter'
@@ -204,216 +211,16 @@ const {
   sections: adminSections
 })
 const avatarMenuOpen = ref(false)
-const userDialogOpen = ref(false)
-const ruleDialogOpen = ref(false)
-const itemDialogOpen = ref(false)
 const successDialogVisible = ref(false)
 const successDialogMessage = ref('')
-const userFormErrors = reactive({
-  username: '',
-  nickname: '',
-  password: '',
-  role: ''
-})
-const ruleFormErrors = reactive({
-  name: '',
-  pointsPerAction: '',
-  carbonReductionPerAction: '',
-  dailyLimit: ''
-})
-const itemFormErrors = reactive({
-  name: '',
-  pointsCost: '',
-  stock: ''
-})
 
 function openProfileCenter() {
   openSection('profile')
   avatarMenuOpen.value = false
 }
 
-function openCreateUserDialog() {
-  resetUserForm()
-  clearUserFormErrors()
-  userDialogOpen.value = true
-}
-
-function openEditUserDialog(user) {
-  editUser(user)
-  clearUserFormErrors()
-  userDialogOpen.value = true
-}
-
-function closeUserDialog() {
-  userDialogOpen.value = false
-  clearUserFormErrors()
-  resetUserForm()
-}
-
-async function submitUserDialog() {
-  clearUserFormErrors()
-  if (!validateUserForm()) {
-    return
-  }
-  const ok = await saveUser()
-  if (ok) {
-    userDialogOpen.value = false
-  }
-}
-
-function openCreateRuleDialog() {
-  resetRuleForm()
-  clearRuleFormErrors()
-  ruleDialogOpen.value = true
-}
-
-function openEditRuleDialog(rule) {
-  editRule(rule)
-  clearRuleFormErrors()
-  ruleDialogOpen.value = true
-}
-
-function closeRuleDialog() {
-  ruleDialogOpen.value = false
-  clearRuleFormErrors()
-  resetRuleForm()
-}
-
-async function submitRuleDialog() {
-  clearRuleFormErrors()
-  if (!validateRuleForm()) {
-    return
-  }
-  const ok = await saveRule()
-  if (ok) {
-    ruleDialogOpen.value = false
-  }
-}
-
-function openCreateItemDialog() {
-  resetItemForm()
-  clearItemFormErrors()
-  itemDialogOpen.value = true
-}
-
-function openEditItemDialog(item) {
-  editItem(item)
-  clearItemFormErrors()
-  itemDialogOpen.value = true
-}
-
-function closeItemDialog() {
-  itemDialogOpen.value = false
-  clearItemFormErrors()
-  resetItemForm()
-}
-
 function closeSuccessDialog() {
   successDialogVisible.value = false
-}
-
-async function submitItemDialog() {
-  clearItemFormErrors()
-  if (!validateItemForm()) {
-    return
-  }
-  const ok = await saveItem()
-  if (ok) {
-    itemDialogOpen.value = false
-  }
-}
-
-function clearErrors(target) {
-  Object.keys(target).forEach((key) => {
-    target[key] = ''
-  })
-}
-
-function clearUserFormErrors() {
-  clearErrors(userFormErrors)
-}
-
-function clearRuleFormErrors() {
-  clearErrors(ruleFormErrors)
-}
-
-function clearItemFormErrors() {
-  clearErrors(itemFormErrors)
-}
-
-function clearUserFieldError(field) {
-  userFormErrors[field] = ''
-}
-
-function clearRuleFieldError(field) {
-  ruleFormErrors[field] = ''
-}
-
-function clearItemFieldError(field) {
-  itemFormErrors[field] = ''
-}
-
-function validateUserForm() {
-  if (!String(userForm.username || '').trim()) {
-    userFormErrors.username = '请输入登录用户名'
-  }
-  if (!String(userForm.nickname || '').trim()) {
-    userFormErrors.nickname = '请输入用户昵称'
-  }
-  if (!String(userForm.role || '').trim()) {
-    userFormErrors.role = '请选择角色'
-  }
-
-  const password = String(userForm.password || '').trim()
-  const isEditing = Boolean(userForm.id)
-  if (!isEditing && !password) {
-    userFormErrors.password = '请输入登录密码'
-  } else if (password && password.length < 6) {
-    userFormErrors.password = '登录密码至少 6 位'
-  }
-
-  return !Object.values(userFormErrors).some(Boolean)
-}
-
-function validateRuleForm() {
-  if (!String(ruleForm.name || '').trim()) {
-    ruleFormErrors.name = '请输入规则名称'
-  }
-
-  const pointsPerAction = Number(ruleForm.pointsPerAction)
-  if (!Number.isFinite(pointsPerAction) || pointsPerAction < 0) {
-    ruleFormErrors.pointsPerAction = '积分需为大于等于 0 的数字'
-  }
-
-  const carbonReductionPerAction = Number(ruleForm.carbonReductionPerAction)
-  if (!Number.isFinite(carbonReductionPerAction) || carbonReductionPerAction < 0) {
-    ruleFormErrors.carbonReductionPerAction = '减碳量需为大于等于 0 的数字'
-  }
-
-  const dailyLimit = Number(ruleForm.dailyLimit)
-  if (!Number.isInteger(dailyLimit) || dailyLimit <= 0) {
-    ruleFormErrors.dailyLimit = '每日上报上限需为正整数'
-  }
-
-  return !Object.values(ruleFormErrors).some(Boolean)
-}
-
-function validateItemForm() {
-  if (!String(itemForm.name || '').trim()) {
-    itemFormErrors.name = '请输入商品名称'
-  }
-
-  const pointsCost = Number(itemForm.pointsCost)
-  if (!Number.isFinite(pointsCost) || pointsCost <= 0) {
-    itemFormErrors.pointsCost = '积分单价需为大于 0 的数字'
-  }
-
-  const stock = Number(itemForm.stock)
-  if (!Number.isInteger(stock) || stock < 0) {
-    itemFormErrors.stock = '库存需为大于等于 0 的整数'
-  }
-
-  return !Object.values(itemFormErrors).some(Boolean)
 }
 
 const {
@@ -498,6 +305,37 @@ const {
     profile.value = data
   },
   resolveDefaultEmail: () => 'admin@lowcarbon.local'
+})
+
+const {
+  userDialogOpen,
+  ruleDialogOpen,
+  itemDialogOpen,
+  openCreateUserDialog,
+  openEditUserDialog,
+  closeUserDialog,
+  submitUserDialog,
+  openCreateRuleDialog,
+  openEditRuleDialog,
+  closeRuleDialog,
+  submitRuleDialog,
+  openCreateItemDialog,
+  openEditItemDialog,
+  closeItemDialog,
+  submitItemDialog
+} = useAdminDialogs({
+  userForm,
+  ruleForm,
+  itemForm,
+  editUser,
+  resetUserForm,
+  saveUser,
+  editRule,
+  resetRuleForm,
+  saveRule,
+  editItem,
+  resetItemForm,
+  saveItem
 })
 
 const usersPageSize = 5
