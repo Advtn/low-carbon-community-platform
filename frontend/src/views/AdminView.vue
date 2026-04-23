@@ -4,12 +4,12 @@
     brand-title="社区运营后台"
     brand-subtitle="规则、审核、商城与订单协同"
     nav-aria-label="管理员模块导航"
-    :sections="filteredSidebarSections"
+    :sidebar-sections="filteredSidebarSections"
     :search-keyword="sectionSearchKeyword"
     @update:searchKeyword="sectionSearchKeyword = $event"
-    :set-search-input-ref="setSectionSearchInput"
+    :register-search-input="setSearchInputRef"
     search-aria-label="搜索管理端模块"
-    :open-tabs="openTabSections"
+    :tab-sections="openTabSections"
     :active-section="activeSection"
     @update:activeSection="activeSection = $event"
     :active-section-meta="activeSectionMeta"
@@ -174,7 +174,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import AdminAuditsSection from '../components/admin/sections/AdminAuditsSection.vue'
 import ItemDialog from '../components/admin/dialogs/ItemDialog.vue'
 import AdminItemsSection from '../components/admin/sections/AdminItemsSection.vue'
@@ -197,7 +197,7 @@ import adminSections from '../constants/adminSections'
 const workspaceStateStorageKey = 'lowcarbon:admin-workspace:v1'
 const {
   sectionSearchKeyword,
-  setSectionSearchInput,
+  setSearchInputRef,
   filteredSidebarSections,
   activeSection,
   openTabSections,
@@ -211,16 +211,10 @@ const {
   sections: adminSections
 })
 const avatarMenuOpen = ref(false)
-const successDialogVisible = ref(false)
-const successDialogMessage = ref('')
 
 function openProfileCenter() {
   openSection('profile')
   avatarMenuOpen.value = false
-}
-
-function closeSuccessDialog() {
-  successDialogVisible.value = false
 }
 
 const {
@@ -262,15 +256,6 @@ const {
   logout
 } = useAdminPage()
 
-watch([message, messageType], ([nextMessage, nextType]) => {
-  if (nextType !== 'success' || !nextMessage) {
-    return
-  }
-  successDialogMessage.value = nextMessage
-  successDialogVisible.value = true
-  clearMessage()
-})
-
 const {
   profileCenterForm,
   profileSaveMessage,
@@ -311,6 +296,8 @@ const {
   userDialogOpen,
   ruleDialogOpen,
   itemDialogOpen,
+  successDialogVisible,
+  successDialogMessage,
   openCreateUserDialog,
   openEditUserDialog,
   closeUserDialog,
@@ -322,7 +309,8 @@ const {
   openCreateItemDialog,
   openEditItemDialog,
   closeItemDialog,
-  submitItemDialog
+  submitItemDialog,
+  closeSuccessDialog
 } = useAdminDialogs({
   userForm,
   ruleForm,
@@ -335,7 +323,10 @@ const {
   saveRule,
   editItem,
   resetItemForm,
-  saveItem
+  saveItem,
+  message,
+  messageType,
+  clearMessage
 })
 
 const usersPageSize = 5

@@ -93,7 +93,7 @@ export function useWorkspaceState({
     sectionSearchInputRef.value.select()
   }
 
-  function setSectionSearchInput(element) {
+  function setSearchInputRef(element) {
     sectionSearchInputRef.value = element
   }
 
@@ -126,17 +126,14 @@ export function useWorkspaceState({
 
   return {
     sectionSearchKeyword,
-    setSectionSearchInput,
-    sidebarSections,
+    setSearchInputRef,
     filteredSidebarSections,
-    openTabs,
     activeSection,
     openTabSections,
     activeSectionMeta,
     openSection,
     closeSection,
     clearSectionSearch,
-    openFirstMatchedSection,
-    focusSectionSearch
+    openFirstMatchedSection
   }
 }

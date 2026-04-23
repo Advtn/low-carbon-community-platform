@@ -4,12 +4,12 @@
     brand-title="居民低碳中心"
     :brand-subtitle="`${profile.nickname || user.nickname} · ${user.username}`"
     nav-aria-label="居民端模块导航"
-    :sections="filteredSidebarSections"
+    :sidebar-sections="filteredSidebarSections"
     :search-keyword="sectionSearchKeyword"
     @update:searchKeyword="sectionSearchKeyword = $event"
-    :set-search-input-ref="setSectionSearchInput"
+    :register-search-input="setSearchInputRef"
     search-aria-label="搜索居民端模块"
-    :open-tabs="openTabSections"
+    :tab-sections="openTabSections"
     :active-section="activeSection"
     @update:activeSection="activeSection = $event"
     :active-section-meta="activeSectionMeta"
@@ -176,7 +176,7 @@ import residentSections from '../constants/residentSections'
 const workspaceStateStorageKey = 'lowcarbon:resident-workspace:v1'
 const {
   sectionSearchKeyword,
-  setSectionSearchInput,
+  setSearchInputRef,
   filteredSidebarSections,
   activeSection,
   openTabSections,

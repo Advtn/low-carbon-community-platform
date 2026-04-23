@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 export function useAdminDialogs({
   userForm,
@@ -12,11 +12,25 @@ export function useAdminDialogs({
   saveRule,
   editItem,
   resetItemForm,
-  saveItem
+  saveItem,
+  message,
+  messageType,
+  clearMessage
 }) {
   const userDialogOpen = ref(false)
   const ruleDialogOpen = ref(false)
   const itemDialogOpen = ref(false)
+  const successDialogVisible = ref(false)
+  const successDialogMessage = ref('')
+
+  watch([message, messageType], ([nextMessage, nextType]) => {
+    if (nextType !== 'success' || !nextMessage) {
+      return
+    }
+    successDialogMessage.value = nextMessage
+    successDialogVisible.value = true
+    clearMessage()
+  })
 
   function openCreateUserDialog() {
     resetUserForm()
@@ -84,10 +98,16 @@ export function useAdminDialogs({
     }
   }
 
+  function closeSuccessDialog() {
+    successDialogVisible.value = false
+  }
+
   return {
     userDialogOpen,
     ruleDialogOpen,
     itemDialogOpen,
+    successDialogVisible,
+    successDialogMessage,
     openCreateUserDialog,
     openEditUserDialog,
     closeUserDialog,
@@ -99,6 +119,7 @@ export function useAdminDialogs({
     openCreateItemDialog,
     openEditItemDialog,
     closeItemDialog,
-    submitItemDialog
+    submitItemDialog,
+    closeSuccessDialog
   }
 }

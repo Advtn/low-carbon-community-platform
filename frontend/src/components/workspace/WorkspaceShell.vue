@@ -12,7 +12,7 @@
 
         <nav class="workspace-nav" :aria-label="navAriaLabel">
           <button
-            v-for="section in sections"
+            v-for="section in sidebarSections"
             :key="section.id"
             class="workspace-nav-item"
             :class="{ active: activeSection === section.id }"
@@ -24,7 +24,7 @@
               <span>{{ section.hint }}</span>
             </span>
           </button>
-          <div v-if="!sections.length" class="workspace-nav-empty">
+          <div v-if="!sidebarSections.length" class="workspace-nav-empty">
             没有匹配到模块，试试其他关键词
           </div>
         </nav>
@@ -52,7 +52,7 @@
           <div class="workspace-toolbar">
             <div class="workspace-search">
               <input
-                :ref="setSearchInputRef"
+                :ref="registerSearchInput"
                 :value="searchKeyword"
                 class="workspace-search-input"
                 type="search"
@@ -106,7 +106,7 @@
 
         <div class="workspace-tabs">
           <button
-            v-for="section in openTabs"
+            v-for="section in tabSections"
             :key="section.id"
             class="workspace-tab"
             :class="{ active: activeSection === section.id }"
@@ -151,7 +151,7 @@ defineProps({
     type: String,
     required: true
   },
-  sections: {
+  sidebarSections: {
     type: Array,
     default: () => []
   },
@@ -167,11 +167,11 @@ defineProps({
     type: String,
     default: ''
   },
-  setSearchInputRef: {
+  registerSearchInput: {
     type: Function,
     default: null
   },
-  openTabs: {
+  tabSections: {
     type: Array,
     default: () => []
   },
